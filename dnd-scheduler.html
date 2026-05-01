@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quest Availability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#12090a;--ink-mid:#4a2e1a;--ink-faint:#8a6c50;
+  --parchment:#f2e8d0;--parch-dark:#e6d4b0;--parch-mid:#cdb98a;
+  --gold:#a0720a;--gold-light:#c9980e;--border:#b09060;
+  --green:#2d5a27;--green-mid:#4a8c42;--green-bg:#e8f3e6;
+  --admin-bg:#100a06;--admin-surface:#1e1208;--admin-border:#3e2a14;
+  --admin-text:#e0ccaa;--admin-muted:#8a6c50;--admin-gold:#c9a020;
+}
+body{font-family:'Crimson Pro',Georgia,serif;background:#0e0806;
+  background-image:
+    radial-gradient(ellipse at 50% 0%,#2a1a0a 0%,transparent 60%),
+    radial-gradient(ellipse at 20% 10%,#1e1006 0%,transparent 50%),
+    radial-gradient(ellipse at 80% 90%,#0a0604 0%,transparent 50%);
+  min-height:100vh;padding:2rem 1rem 4rem;color:var(--ink)}
+
+/* Parchment */
+.parchment{max-width:720px;margin:0 auto;background:var(--parchment);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  border-radius:3px;padding:2.5rem 2.5rem 3rem;
+  box-shadow:
+    inset 0 0 40px rgba(120,80,20,.12),
+    0 2px 0 #c0a060,0 4px 0 #a88040,0 6px 0 #907030,
+    0 10px 30px rgba(0,0,0,.7),0 30px 80px rgba(0,0,0,.5);
+  position:relative;border:1px solid #b89050}
+.parchment::before{content:'';position:absolute;inset:10px;
+  border:1px solid rgba(160,114,10,.35);border-radius:1px;pointer-events:none}
+.parchment::after{content:'';position:absolute;inset:14px;
+  border:1px solid rgba(160,114,10,.15);border-radius:1px;pointer-events:none}
+
+/* Admin panel */
+.admin-panel{max-width:720px;margin:0 auto;background:var(--admin-surface);
+  border-radius:3px;padding:2rem 2.5rem 2.5rem;
+  border:1px solid var(--admin-border);
+  box-shadow:inset 0 0 60px rgba(0,0,0,.3),0 10px 40px rgba(0,0,0,.8);display:none}
+.admin-panel.active{display:block}
+.admin-panel h1{font-family:'Cinzel',serif;font-size:20px;font-weight:700;
+  color:var(--admin-gold);letter-spacing:.08em;margin-bottom:4px}
+.admin-subtitle{font-size:13px;color:var(--admin-muted);margin-bottom:1.5rem}
+.admin-section{margin-bottom:1.75rem}
+.admin-section h2{font-family:'Cinzel',serif;font-size:12px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--admin-muted);
+  margin-bottom:.75rem;padding-bottom:6px;border-bottom:1px solid var(--admin-border)}
+
+/* Form controls */
+.admin-input{width:100%;padding:9px 12px;font-family:'Crimson Pro',serif;font-size:15px;
+  background:#1a1208;border:1px solid var(--admin-border);border-radius:3px;
+  color:var(--admin-text);outline:none;transition:border-color .2s}
+.admin-input:focus{border-color:var(--admin-gold)}
+.admin-input::placeholder{color:var(--admin-muted)}
+.admin-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.admin-row .admin-input{margin:0}
+.admin-row label{font-size:13px;color:var(--admin-muted);min-width:72px;flex-shrink:0}
+
+/* Calendar */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-title{font-family:'Cinzel',serif;font-size:14px;font-weight:600;
+  color:var(--admin-gold);letter-spacing:.06em}
+.cal-nav{background:none;border:1px solid var(--admin-border);color:var(--admin-text);
+  padding:5px 12px;border-radius:3px;cursor:pointer;font-size:14px;transition:background .15s}
+.cal-nav:hover{background:var(--admin-border)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-dow{text-align:center;font-family:'Cinzel',serif;font-size:10px;font-weight:600;
+  letter-spacing:.08em;color:var(--admin-muted);padding:5px 0;text-transform:uppercase}
+.cal-day{text-align:center;padding:7px 2px;border-radius:3px;font-size:14px;
+  cursor:pointer;border:1px solid transparent;color:var(--admin-text);
+  transition:background .1s,border-color .1s;font-family:'Crimson Pro',serif;
+  line-height:1.2;min-height:40px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center}
+.cal-day:hover{background:var(--admin-border)}
+.cal-day.other-month{color:#4a3520;cursor:default}
+.cal-day.other-month:hover{background:none}
+.cal-day.today{border-color:var(--admin-gold);color:var(--admin-gold)}
+.cal-day.has-slots{background:#2d5a27;border-color:#4a8c42;color:#c8e8c0}
+.cal-day.has-slots:hover{background:#244a1f}
+.slot-count{font-size:10px;font-family:'Cinzel',serif;letter-spacing:.04em;
+  color:#97c459;margin-top:1px}
+
+/* Time popup */
+.time-popup{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);
+  z-index:200;align-items:center;justify-content:center}
+.time-popup.open{display:flex}
+.time-box{background:var(--admin-surface);border:1px solid var(--admin-border);
+  border-radius:6px;padding:1.5rem;min-width:300px;
+  box-shadow:0 8px 40px rgba(0,0,0,.6)}
+.time-box h3{font-family:'Cinzel',serif;font-size:14px;color:var(--admin-gold);
+  margin-bottom:.75rem;letter-spacing:.06em}
+.popup-date{font-size:15px;color:var(--admin-text);margin-bottom:1rem;font-style:italic}
+.time-box label{font-size:12px;color:var(--admin-muted);display:block;
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:'Cinzel',serif}
+.time-select-row{display:flex;gap:6px;margin-bottom:1rem;align-items:center}
+.time-sel{padding:8px 10px;background:#1a1208;border:1px solid var(--admin-border);
+  border-radius:3px;color:var(--admin-text);font-family:'Crimson Pro',serif;
+  font-size:15px;outline:none;flex:1;cursor:pointer}
+.time-sel:focus{border-color:var(--admin-gold)}
+.sep{color:var(--admin-muted);font-size:18px}
+.popup-btns{display:flex;gap:8px;margin-top:.25rem}
+
+/* Session list — grouped by date */
+.session-group{margin-bottom:10px;background:#1a1208;
+  border:1px solid var(--admin-border);border-radius:3px;overflow:hidden}
+.session-group-header{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;border-bottom:1px solid var(--admin-border)}
+.session-group-date{font-family:'Cinzel',serif;font-size:12px;
+  color:var(--admin-gold);font-weight:600;letter-spacing:.05em}
+.date-tally{font-family:'Cinzel',serif;font-size:12px;font-weight:700;
+  padding:3px 10px;border-radius:99px;letter-spacing:.04em}
+.tally-best{background:#2d5a27;color:#97c459;border:1px solid #4a8c42}
+.tally-some{background:#2a1f14;color:var(--admin-muted);border:1px solid var(--admin-border)}
+.tally-none{background:transparent;color:#5a3a2a;border:1px solid #3a2510}
+.session-slot{display:flex;align-items:flex-start;justify-content:space-between;
+  padding:8px 12px 8px 20px;gap:8px}
+.session-slot:not(:last-child){border-bottom:1px solid rgba(74,53,32,.5)}
+.session-slot .s-time{font-size:14px;color:var(--admin-text);margin-bottom:5px}
+.slot-response-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.slot-bar-bg{width:80px;height:6px;background:#2a1f14;border-radius:99px;
+  overflow:hidden;border:1px solid var(--admin-border);flex-shrink:0}
+.slot-bar-fill{height:100%;background:var(--green-mid);border-radius:99px}
+.slot-bar-label{font-family:'Cinzel',serif;font-size:11px;font-weight:600;
+  color:var(--admin-muted);min-width:28px;flex-shrink:0}
+.slot-names{display:flex;flex-wrap:wrap;gap:3px}
+.slot-name-pill{display:inline-block;padding:1px 7px;background:#1a3a18;
+  border:1px solid #2d5a27;border-radius:99px;font-size:10px;
+  font-family:'Cinzel',serif;color:#97c459}
+.remove-btn{background:none;border:none;color:#7a3030;font-size:20px;
+  cursor:pointer;line-height:1;padding:0 4px;transition:color .15s}
+.remove-btn:hover{color:#c04040}
+.no-items{font-size:14px;color:var(--admin-muted);font-style:italic;padding:6px 0}
+
+/* Confirmed slot checkbox */
+.confirm-check{display:flex;align-items:center;gap:6px;margin-top:5px;cursor:pointer;user-select:none}
+.confirm-check input{display:none}
+.confirm-box{width:15px;height:15px;border:1.5px solid var(--admin-border);border-radius:3px;
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.confirm-check.on .confirm-box{background:var(--admin-gold);border-color:var(--admin-gold)}
+.confirm-check .confirm-label{font-family:'Cinzel',serif;font-size:10px;
+  letter-spacing:.06em;color:var(--admin-muted);transition:color .15s}
+.confirm-check.on .confirm-label{color:var(--admin-gold)}
+.session-slot.confirmed{background:rgba(160,114,10,.08)}
+
+/* Generate schedule button */
+.gen-schedule-wrap{margin-top:12px;display:flex;justify-content:flex-end}
+
+/* Schedule modal */
+.sched-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);
+  z-index:400;align-items:flex-start;justify-content:center;
+  overflow-y:auto;padding:2rem 1rem 4rem}
+.sched-modal.open{display:flex}
+.sched-modal-inner{position:relative;width:100%;max-width:600px;margin:auto}
+.sched-close{position:absolute;top:-36px;right:0;background:none;border:none;
+  color:#8a6c50;font-size:22px;cursor:pointer;font-family:'Cinzel',serif;
+  letter-spacing:.06em;display:flex;align-items:center;gap:6px}
+.sched-close:hover{color:#e0ccaa}
+
+/* The announcement card itself */
+.announce-card{background:var(--parchment);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  border-radius:3px;padding:2.5rem 2.5rem 3rem;position:relative;
+  border:1px solid #b89050;
+  box-shadow:inset 0 0 40px rgba(120,80,20,.12),
+    0 2px 0 #c0a060,0 4px 0 #a88040,0 6px 0 #907030,
+    0 10px 30px rgba(0,0,0,.7)}
+.announce-card::before{content:'';position:absolute;inset:10px;
+  border:1px solid rgba(160,114,10,.35);border-radius:1px;pointer-events:none}
+.announce-card::after{content:'';position:absolute;inset:14px;
+  border:1px solid rgba(160,114,10,.15);border-radius:1px;pointer-events:none}
+.announce-header{text-align:center;margin-bottom:1.75rem}
+.announce-runes{font-family:'UnifrakturMaguntia',cursive;font-size:24px;
+  color:var(--gold);letter-spacing:6px;margin-bottom:.5rem;
+  text-shadow:0 1px 3px rgba(120,80,10,.4);opacity:.85}
+.announce-title{font-family:'UnifrakturMaguntia',cursive;font-size:clamp(26px,6vw,40px);
+  color:var(--ink);line-height:1.1;
+  text-shadow:1px 1px 0 rgba(255,255,255,.4),0 2px 6px rgba(80,40,0,.2)}
+.announce-subtitle{font-family:'Cinzel',serif;font-size:12px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ink-faint);margin-top:8px}
+.announce-divider{display:flex;align-items:center;gap:10px;margin:1.25rem 0;color:var(--gold)}
+.announce-divider::before,.announce-divider::after{content:'';flex:1;height:1px;
+  background:linear-gradient(to right,transparent,var(--border))}
+.announce-divider::after{background:linear-gradient(to left,transparent,var(--border))}
+.announce-divider span{font-size:16px;text-shadow:0 0 8px rgba(180,130,20,.4)}
+
+.session-entries{display:flex;flex-direction:column;gap:14px;margin-bottom:1.5rem}
+.session-entry{display:flex;gap:16px;align-items:flex-start;
+  padding:14px 16px;background:rgba(160,114,10,.06);
+  border:1px solid rgba(160,114,10,.2);border-radius:2px}
+.entry-icon{font-size:22px;flex-shrink:0;margin-top:2px;
+  filter:drop-shadow(0 1px 2px rgba(120,80,10,.3))}
+.entry-body{}
+.entry-date{font-family:'Cinzel',serif;font-size:15px;font-weight:700;
+  color:var(--ink);letter-spacing:.04em}
+.entry-time{font-family:'Crimson Pro',serif;font-size:15px;color:var(--ink-mid);
+  margin-top:3px;font-style:italic}
+.entry-duration{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.06em;
+  color:var(--ink-faint);margin-top:4px;text-transform:uppercase}
+.gcal-link{display:inline-flex;align-items:center;gap:5px;margin-top:8px;
+  padding:5px 12px;font-family:'Cinzel',serif;font-size:10px;font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;text-decoration:none;
+  background:rgba(160,114,10,.1);border:1px solid rgba(160,114,10,.3);
+  border-radius:2px;color:var(--gold);transition:background .15s,border-color .15s}
+.gcal-link:hover{background:rgba(160,114,10,.2);border-color:var(--gold)}
+
+.announce-footer{text-align:center;margin-top:1.5rem}
+.announce-footer p{font-family:'Crimson Pro',serif;font-size:15px;
+  color:var(--ink-mid);font-style:italic;line-height:1.7}
+.announce-seal{font-size:28px;margin-top:.75rem;
+  filter:drop-shadow(0 2px 4px rgba(120,80,10,.3))}
+
+.copy-hint{text-align:center;margin-top:1rem;font-family:'Cinzel',serif;
+  font-size:11px;letter-spacing:.08em;color:#6a5040}
+
+/* Buttons */
+.btn{padding:9px 18px;font-family:'Cinzel',serif;font-size:12px;font-weight:600;
+  letter-spacing:.07em;border-radius:3px;cursor:pointer;border:1px solid;
+  transition:all .15s;white-space:nowrap;display:inline-block}
+.btn-gold{background:var(--gold);border-color:#9a6e00;color:#fff;
+  text-shadow:0 1px 1px rgba(0,0,0,.3)}
+.btn-gold:hover{background:#a07008}
+.btn-dark{background:#1a1208;border-color:var(--admin-border);color:var(--admin-text)}
+.btn-dark:hover{background:var(--admin-border)}
+.btn-danger{background:transparent;border-color:#7a3030;color:#c07070}
+.btn-danger:hover{background:#3a1010}
+.btn-green{background:var(--green);border-color:#1e3e1a;color:#fff;
+  width:100%;padding:13px;font-size:14px;letter-spacing:.08em;
+  text-shadow:0 1px 1px rgba(0,0,0,.3)}
+.btn-green:hover{background:#244a1f}
+.btn-outline{background:transparent;border-color:var(--border);color:var(--ink-mid)}
+.btn-outline:hover{background:var(--parch-dark);border-color:var(--ink-faint)}
+.btn-sm{padding:6px 12px;font-size:11px}
+
+/* Parchment header */
+.header{text-align:center;margin-bottom:2rem}
+.rune-row{font-family:'UnifrakturMaguntia',cursive;font-size:28px;
+  color:var(--gold);letter-spacing:6px;margin-bottom:.6rem;
+  text-shadow:0 1px 3px rgba(120,80,10,.4),0 0 20px rgba(180,130,20,.15);
+  opacity:.9}
+.header h1{font-family:'Cinzel',serif;font-size:clamp(22px,5vw,36px);font-weight:700;
+  color:var(--ink);letter-spacing:.1em;line-height:1.1;
+  text-shadow:1px 1px 0 rgba(255,255,255,.5),0 2px 4px rgba(80,40,0,.2)}
+.campaign{font-family:'UnifrakturMaguntia',cursive;font-size:17px;font-weight:400;
+  color:var(--ink-mid);letter-spacing:.08em;margin-top:6px;
+  text-shadow:0 1px 2px rgba(120,80,10,.2)}
+.divider{display:flex;align-items:center;gap:10px;margin:1.5rem 0;color:var(--gold)}
+.divider::before,.divider::after{content:'';flex:1;height:1px;
+  background:linear-gradient(to right,transparent,var(--parch-mid),var(--border))}
+.divider::after{background:linear-gradient(to left,transparent,var(--parch-mid),var(--border))}
+.divider-icon{font-size:18px;flex-shrink:0;
+  text-shadow:0 0 8px rgba(180,130,20,.4)}
+.step{display:none}.step.active{display:block}
+
+/* Player name step */
+.name-section{text-align:center;padding:1rem 0}
+.name-section p{font-size:17px;color:var(--ink-mid);font-style:italic;
+  margin-bottom:1.5rem;line-height:1.6}
+.name-field{display:flex;gap:8px;max-width:400px;margin:0 auto}
+input[type="text"]{flex:1;padding:10px 14px;font-family:'Crimson Pro',serif;
+  font-size:16px;background:white;border:1px solid var(--border);border-radius:3px;
+  color:var(--ink);outline:none;transition:border-color .2s,box-shadow .2s}
+input[type="text"]:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,134,11,.15)}
+input[type="text"]::placeholder{color:var(--ink-faint)}
+
+/* Date grid */
+.instruction{font-size:17px;color:var(--ink-mid);font-style:italic;
+  margin-bottom:1.25rem;text-align:center;line-height:1.6}
+.month-group{margin-bottom:1.5rem}
+.month-label{font-family:'Cinzel',serif;font-size:12px;font-weight:600;
+  letter-spacing:.12em;color:var(--ink-faint);text-transform:uppercase;margin-bottom:8px}
+.date-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:6px}
+.date-tile{position:relative;cursor:pointer;user-select:none}
+.date-tile input{position:absolute;opacity:0;width:0;height:0}
+.tile-inner{display:flex;flex-direction:column;align-items:center;padding:10px 8px;
+  border:1px solid var(--border);border-radius:3px;background:white;transition:all .12s}
+.date-tile:hover .tile-inner{background:var(--parch-dark);border-color:var(--gold)}
+.date-tile.checked .tile-inner{background:var(--green-bg);border-color:var(--green-mid);
+  box-shadow:inset 0 0 0 1px var(--green-mid)}
+.tile-dow{font-family:'Cinzel',serif;font-size:10px;font-weight:600;
+  letter-spacing:.1em;color:var(--ink-faint);margin-bottom:3px}
+.date-tile.checked .tile-dow{color:var(--green)}
+.tile-day{font-size:22px;font-weight:600;color:var(--ink);line-height:1}
+.date-tile.checked .tile-day{color:var(--green)}
+.tile-month{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.08em;
+  color:var(--ink-mid);margin-top:2px}
+.date-tile.checked .tile-month{color:var(--green-mid)}
+.tile-time{font-size:11px;color:var(--ink-faint);margin-top:3px;text-align:center;line-height:1.4}
+.date-tile.checked .tile-time{color:var(--green-mid)}
+.checkmark{position:absolute;top:5px;right:5px;width:16px;height:16px;
+  background:var(--green);border-radius:50%;display:none;
+  align-items:center;justify-content:center}
+.date-tile.checked .checkmark{display:flex}
+.checkmark svg{width:9px;height:9px}
+
+.selection-count{text-align:center;font-family:'Cinzel',serif;font-size:12px;
+  color:var(--ink-faint);letter-spacing:.06em;margin:1rem 0 .5rem}
+.selection-count span{color:var(--green);font-weight:600}
+
+/* Results */
+.results-table{width:100%;border-collapse:collapse}
+.results-table th{font-family:'Cinzel',serif;font-size:11px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);
+  padding:6px 10px;border-bottom:1px solid var(--border);text-align:left}
+.results-table td{padding:9px 10px;border-bottom:1px solid var(--parch-mid);
+  font-size:15px;vertical-align:middle}
+.results-table tr:last-child td{border-bottom:none}
+.results-table tr.best-row td{background:rgba(45,90,39,.07)}
+.bar-wrap{display:flex;align-items:center;gap:8px}
+.bar-bg{flex:1;height:8px;background:var(--parch-mid);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;background:var(--green-mid);border-radius:99px}
+.bar-label{font-family:'Cinzel',serif;font-size:12px;font-weight:600;
+  color:var(--green);min-width:36px;text-align:right}
+.name-pill{display:inline-block;padding:2px 8px;background:var(--green-bg);
+  border:1px solid var(--green-mid);border-radius:99px;font-size:11px;
+  font-family:'Cinzel',serif;color:var(--green);margin:2px}
+.best-badge{display:inline-block;padding:2px 8px;background:var(--gold);
+  border-radius:99px;font-size:10px;font-family:'Cinzel',serif;font-weight:600;
+  color:white;letter-spacing:.08em;margin-left:6px;vertical-align:middle}
+.action-row{display:flex;gap:10px;margin-top:1.5rem;flex-wrap:wrap}
+.action-row .btn{flex:1;min-width:140px;text-align:center}
+.footer-note{text-align:center;margin-top:1.5rem;font-size:12px;
+  color:var(--ink-faint);font-style:italic}
+.no-dates-notice{text-align:center;padding:2rem 1rem;color:var(--ink-faint);
+  font-style:italic;font-size:16px;line-height:1.8}
+
+/* Admin login */
+.pw-screen{text-align:center;padding:1rem 0}
+.pw-screen p{font-size:15px;color:var(--admin-muted);margin-bottom:1.25rem;font-style:italic}
+.pw-field{display:flex;gap:8px;max-width:320px;margin:0 auto}
+input[type="password"]{flex:1;padding:9px 12px;font-family:'Crimson Pro',serif;
+  font-size:15px;background:#1a1208;border:1px solid var(--admin-border);
+  border-radius:3px;color:var(--admin-text);outline:none}
+input[type="password"]:focus{border-color:var(--admin-gold)}
+.pw-error{color:#c07070;font-size:13px;margin-top:8px;min-height:18px;text-align:center}
+.back-link{background:none;border:none;color:var(--admin-muted);font-size:12px;
+  font-family:'Cinzel',serif;letter-spacing:.06em;cursor:pointer;
+  text-decoration:underline;text-underline-offset:3px;margin-top:1rem;display:inline-block}
+.back-link:hover{color:var(--admin-gold)}
+.admin-toggle{text-align:center;margin-top:1.5rem}
+.admin-toggle button{background:none;border:none;color:var(--ink-faint);font-size:12px;
+  font-family:'Cinzel',serif;letter-spacing:.06em;cursor:pointer;
+  text-decoration:underline;text-underline-offset:3px;opacity:.6}
+.admin-toggle button:hover{opacity:1}
+.admin-header{display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:1.5rem;flex-wrap:wrap;gap:8px}
+.admin-btns{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Admin response table */
+.resp-table{width:100%;border-collapse:collapse;font-size:13px}
+.resp-table th{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--admin-muted);padding:6px 10px;
+  border-bottom:1px solid var(--admin-border);text-align:left}
+.resp-table td{padding:8px 10px;border-bottom:1px solid var(--admin-border);
+  color:var(--admin-text);vertical-align:top}
+.resp-table tr:last-child td{border-bottom:none}
+.avail-pill{display:inline-block;padding:2px 7px;background:#1a3a18;
+  border:1px solid #2d5a27;border-radius:99px;font-size:11px;color:#97c459;
+  margin:2px;font-family:'Cinzel',serif}
+
+/* Toast */
+.toast{position:fixed;bottom:2rem;left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:#1e3e1a;color:#c8e8c0;padding:10px 20px;border-radius:3px;
+  font-family:'Cinzel',serif;font-size:13px;letter-spacing:.06em;
+  opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;
+  z-index:300;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:480px){
+  .parchment,.admin-panel{padding:1.5rem 1.25rem 2rem}
+  .date-grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr))}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+  SETUP: Only change the two values below.
+  Everything else is managed through the admin UI.
+  ═══════════════════════════════════════════════ -->
+<script>
+const DM_PASSWORD = "dungeon";         // ← Change to your own password
+
+// ── Supabase config ──────────────────────────────────────────────────────────
+const SB_URL  = "https://oejfkgozxswpvjujbnkg.supabase.co/rest/v1";
+const SB_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lamZrZ296eHN3cHZqdWpibmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjUzMjEsImV4cCI6MjA5MzI0MTMyMX0.oyUR0kYcNogW3NF6E98hKFWrk9Ac4HzUwsq89SUSSqQ";
+const SB_HDR  = {"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY};
+</script>
+<!-- ═══════════════════════════════════════════════ -->
+
+
+<!-- ── Player view ─────────────────────────────── -->
+<div class="parchment" id="player-view">
+  <div class="header">
+    <div class="rune-row">ᚨᚱᛞᛖᚾᛁᚨ</div>
+    <h1 id="disp-title">Quest Availability</h1>
+    <div class="campaign" id="disp-campaign"></div>
+  </div>
+  <div class="divider"><div class="divider-icon">⚔</div></div>
+
+  <div id="step-name" class="step active">
+    <div class="name-section">
+      <p id="disp-tagline">Enter your name to mark which dates you're available for the next session.</p>
+      <div class="name-field">
+        <input type="text" id="player-input" placeholder="Your name…" maxlength="40"
+          onkeydown="if(event.key==='Enter')goToDates()"
+          oninput="checkReturning(this.value)" />
+        <button class="btn btn-gold" onclick="goToDates()">Enter</button>
+      </div>
+      <div id="returning-hint" style="margin-top:10px;font-family:'Cinzel',serif;font-size:11px;
+        letter-spacing:.07em;color:var(--ink-faint);min-height:16px;font-style:normal"></div>
+    </div>
+  </div>
+
+  <div id="step-dates" class="step">
+    <p class="instruction" id="dates-instr">Check every time slot that works for you.</p>
+    <div id="date-grid-wrap"></div>
+    <div class="selection-count"><span id="sel-count">0</span> slot<span id="sel-plural">s</span> selected</div>
+    <button class="btn btn-green" onclick="submitAvailability()">Submit My Availability</button>
+    <div class="footer-note">You can return anytime to update your choices.</div>
+  </div>
+
+  <div id="step-results" class="step">
+    <div style="text-align:center;margin-bottom:1.25rem">
+      <div style="font-family:'Cinzel',serif;font-size:18px;font-weight:600;color:var(--ink)" id="result-name"></div>
+      <p style="color:var(--ink-mid);font-style:italic;font-size:16px;margin-top:4px">Your availability has been saved.</p>
+    </div>
+    <div class="divider"><div class="divider-icon">📜</div></div>
+    <div id="results-wrap"></div>
+    <div class="action-row">
+      <button class="btn btn-outline" onclick="goBack()">← Change my slots</button>
+      <button class="btn btn-gold" onclick="goToName()">Switch player</button>
+    </div>
+  </div>
+
+  <div class="admin-toggle">
+    <button onclick="openAdminLogin()">⚙ DM Admin</button>
+  </div>
+</div>
+
+
+<!-- ── Admin panel ──────────────────────────────── -->
+<div class="admin-panel" id="admin-view">
+
+  <div id="admin-login">
+    <div class="pw-screen">
+      <h1 style="font-family:'Cinzel',serif;font-size:20px;color:var(--admin-gold);margin-bottom:.5rem">DM Portal</h1>
+      <p>Enter the DM password to manage sessions.</p>
+      <div class="pw-field">
+        <input type="password" id="pw-input" placeholder="Password…"
+          onkeydown="if(event.key==='Enter')checkPw()" />
+        <button class="btn btn-gold btn-sm" onclick="checkPw()">Enter</button>
+      </div>
+      <div class="pw-error" id="pw-error"></div>
+      <div style="margin-top:1rem"><button class="back-link" onclick="showPlayerView()">← Back to player view</button></div>
+    </div>
+  </div>
+
+  <div id="admin-dash" style="display:none">
+    <div class="admin-header">
+      <div>
+        <h1>DM Admin Portal</h1>
+        <div class="admin-subtitle">Manage your campaign settings and session dates</div>
+      </div>
+      <div class="admin-btns">
+        <button class="btn btn-dark btn-sm" onclick="showPlayerView()">← Player View</button>
+        <button class="btn btn-danger btn-sm" onclick="clearResponses()">Clear All Responses</button>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <h2>Campaign Settings</h2>
+      <div class="admin-row">
+        <label>Title</label>
+        <input type="text" id="cfg-title" class="admin-input" placeholder="Quest Availability" oninput="saveSettings()" />
+      </div>
+      <div class="admin-row">
+        <label>Campaign</label>
+        <input type="text" id="cfg-campaign" class="admin-input" placeholder="e.g. Das Versprechen" oninput="saveSettings()" />
+      </div>
+      <div class="admin-row">
+        <label>Tagline</label>
+        <input type="text" id="cfg-tagline" class="admin-input" placeholder="Enter your name to mark available dates." oninput="saveSettings()" />
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <h2>Add Session Dates</h2>
+      <div class="cal-header">
+        <button class="cal-nav" onclick="calPrev()">&#8592;</button>
+        <div class="cal-title" id="cal-title"></div>
+        <button class="cal-nav" onclick="calNext()">&#8594;</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <p style="margin-top:8px;font-size:12px;color:var(--admin-muted);font-style:italic">
+        Click any date to add a time slot. Click again to add another slot on the same day.
+      </p>
+    </div>
+
+    <div class="admin-section">
+      <h2>Scheduled Sessions</h2>
+      <div id="session-list"></div>
+      <div class="gen-schedule-wrap" id="gen-schedule-wrap" style="display:none">
+        <button class="btn btn-gold" onclick="openSchedModal()">📜 Generate Announcement</button>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <h2>Player Responses</h2>
+      <div id="admin-responses"></div>
+    </div>
+  </div>
+
+</div><!-- /admin-panel -->
+
+
+<!-- Schedule announcement modal -->
+<div class="sched-modal" id="sched-modal">
+  <div class="sched-modal-inner">
+    <button class="sched-close" onclick="closeSchedModal()">✕ Close</button>
+    <div class="announce-card" id="announce-card">
+      <div class="announce-header">
+        <div class="announce-runes">ᚨᚱᛞᛖᚾᛁᚨ</div>
+        <div class="announce-title" id="ann-title">Das Versprechen</div>
+        <div class="announce-subtitle" id="ann-subtitle">Upcoming Sessions</div>
+      </div>
+      <div class="announce-divider"><span>⚔</span></div>
+      <div class="session-entries" id="ann-entries"></div>
+      <div class="announce-divider"><span>✦</span></div>
+      <div class="announce-footer">
+        <p id="ann-footer">Sharpen your blades and ready your spells.<br>The quest awaits.</p>
+        <div class="announce-seal">🎲</div>
+      </div>
+    </div>
+    <div class="copy-hint">Screenshot or copy this announcement for Discord</div>
+  </div>
+</div>
+
+<!-- Time picker popup -->
+<div class="time-popup" id="time-popup">
+  <div class="time-box">
+    <h3>Add Time Slot</h3>
+    <div class="popup-date" id="popup-date"></div>
+    <label>Start time</label>
+    <div class="time-select-row">
+      <select class="time-sel" id="t-hour"></select>
+      <span class="sep">:</span>
+      <select class="time-sel" id="t-min"></select>
+      <select class="time-sel" id="t-ampm" style="flex:.65">
+        <option>AM</option><option selected>PM</option>
+      </select>
+    </div>
+    <label>Duration</label>
+    <div class="time-select-row">
+      <select class="time-sel" id="t-duration">
+        <option value="60">1 hour</option>
+        <option value="90">1.5 hours</option>
+        <option value="120">2 hours</option>
+        <option value="150">2.5 hours</option>
+        <option value="180" selected>3 hours</option>
+        <option value="210">3.5 hours</option>
+        <option value="240">4 hours</option>
+        <option value="270">4.5 hours</option>
+        <option value="300">5 hours</option>
+      </select>
+    </div>
+    <div class="popup-btns">
+      <button class="btn btn-gold" style="flex:1" onclick="confirmAdd()">Add Slot</button>
+      <button class="btn btn-dark" onclick="closePopup()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const ML=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+// ── Supabase storage ──────────────────────────────────────────────────────────
+// One table: scheduler_data(key text PK, value jsonb)
+// Keys used: "settings", "sessions", "responses", "confirmed"
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+
+// In-memory cache so reads within one page load are instant
+const _cache={};
+
+async function sbGet(key){
+  if(_cache[key]!==undefined)return _cache[key];
+  try{
+    const r=await fetch(`${SB_URL}/scheduler_data?key=eq.${key}&select=value`,
+      {headers:{...SB_HDR,"Accept":"application/json"}});
+    const rows=await r.json();
+    const val=rows.length?rows[0].value:null;
+    _cache[key]=val;
+    return val;
+  }catch(e){console.error("sbGet",e);return null;}
+}
+
+async function sbSet(key,value){
+  _cache[key]=value;
+  try{
+    await fetch(`${SB_URL}/scheduler_data`,{
+      method:"POST",
+      headers:{...SB_HDR,"Prefer":"resolution=merge-duplicates"},
+      body:JSON.stringify({key,value,updated_at:new Date().toISOString()})
+    });
+  }catch(e){console.error("sbSet",e);toast("Save error — check connection.");}
+}
+
+async function getSettings(){
+  const v=await sbGet("settings");
+  return v||{title:"Quest Availability",campaign:"",tagline:"Enter your name to mark which dates you're available."};
+}
+async function getSessions(){
+  const v=await sbGet("sessions");
+  const sessions=v||[];
+  let dirty=false;
+  sessions.forEach(s=>{if(!s.id){s.id=uid();dirty=true;}});
+  if(dirty)await putSessions(sessions);
+  return sessions;
+}
+async function getResponses(){const v=await sbGet("responses");return v||{};}
+async function getConfirmed(){const v=await sbGet("confirmed");return new Set(v||[]);}
+async function putSettings(cfg){await sbSet("settings",cfg);}
+async function putSessions(s){await sbSet("sessions",s);}
+async function putResponses(r){await sbSet("responses",r);}
+async function putConfirmed(set){await sbSet("confirmed",[...set]);}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function pad(n){return String(n).padStart(2,"0")}
+function localDate(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function dateKey(y,m,d){return`${y}-${pad(m+1)}-${pad(d)}`}
+function dispLong(s){const d=localDate(s);return`${DS[d.getDay()]}, ${ML[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`}
+function dispShort(s){const d=localDate(s);return`${DS[d.getDay()]} ${MS[d.getMonth()]} ${d.getDate()}`}
+function durLabel(dur){return dur%60===0?`${dur/60}h`:`${Math.floor(dur/60)}h ${dur%60}m`}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2400)}
+
+// ── Apply settings to player view ─────────────────────────────────────────────
+async function applySettings(){
+  const c=await getSettings();
+  document.getElementById("disp-title").textContent=c.title||"Quest Availability";
+  document.getElementById("disp-campaign").textContent=c.campaign||"";
+  document.getElementById("disp-tagline").textContent=c.tagline||"";
+  document.title=c.title||"Quest Availability";
+}
+
+// ── Player navigation ─────────────────────────────────────────────────────────
+let curPlayer="",curSel=new Set();
+
+function showStep(id){document.querySelectorAll(".step").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active")}
+
+function goToName(){curPlayer="";curSel=new Set();document.getElementById("player-input").value="";document.getElementById("returning-hint").textContent="";showStep("step-name");setTimeout(()=>document.getElementById("player-input").focus(),50)}
+
+async function checkReturning(val){
+  const hint=document.getElementById("returning-hint");
+  const name=val.trim();
+  if(!name){hint.textContent="";return;}
+  const responses=await getResponses();
+  const existing=responses[name];
+  if(existing!==undefined){
+    hint.textContent=existing.length>0
+      ?"↩ Returning adventurer — your previous choices will be loaded."
+      :"↩ Returning adventurer — you previously submitted no availability.";
+  }else{
+    hint.textContent="";
+  }
+}
+
+async function goToDates(){
+  const n=document.getElementById("player-input").value.trim();
+  if(!n){toast("Please enter your name first.");return;}
+  curPlayer=n;
+  const responses=await getResponses();
+  curSel=new Set(responses[n]||[]);
+  await buildGrid();
+  document.getElementById("dates-instr").textContent=`Check every time slot that works for you, ${curPlayer}.`;
+  updateCount();showStep("step-dates");
+}
+
+async function goBack(){await buildGrid();updateCount();showStep("step-dates")}
+
+async function buildGrid(){
+  const sessions=await getSessions(),wrap=document.getElementById("date-grid-wrap");
+  if(!sessions.length){wrap.innerHTML='<div class="no-dates-notice">The Dungeon Master hasn\'t posted any dates yet.<br>Check back soon, adventurer.</div>';return;}
+
+  // Group slots by month for display
+  const byMonth={};
+  sessions.forEach(s=>{
+    const d=localDate(s.date),k=d.getFullYear()+"-"+d.getMonth();
+    if(!byMonth[k])byMonth[k]={label:ML[d.getMonth()]+" "+d.getFullYear(),slots:[]};
+    byMonth[k].slots.push(s);
+  });
+
+  wrap.innerHTML=Object.values(byMonth).map(g=>`
+    <div class="month-group">
+      <div class="month-label">${g.label}</div>
+      <div class="date-grid">
+        ${g.slots.map(s=>{
+          const d=localDate(s.date),chk=curSel.has(s.id);
+          const dl=s.duration?durLabel(s.duration):"";
+          return`<label class="date-tile${chk?" checked":""}" data-id="${s.id}">
+            <input type="checkbox" ${chk?"checked":""} onchange="toggleSlot(this)"/>
+            <div class="tile-inner">
+              <div class="tile-dow">${DS[d.getDay()]}</div>
+              <div class="tile-day">${d.getDate()}</div>
+              <div class="tile-month">${MS[d.getMonth()]}</div>
+              ${s.time?`<div class="tile-time">${s.time}${dl?`<br>${dl}`:""}</div>`:""}
+            </div>
+            <div class="checkmark"><svg viewBox="0 0 9 8" fill="none"><path d="M1 4l2.5 3L8 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </label>`;
+        }).join("")}
+      </div>
+    </div>`).join("");
+}
+
+function toggleSlot(input){
+  const tile=input.closest(".date-tile"),id=tile.dataset.id;
+  if(input.checked){curSel.add(id);tile.classList.add("checked")}
+  else{curSel.delete(id);tile.classList.remove("checked")}
+  updateCount();
+}
+
+function updateCount(){const n=curSel.size;document.getElementById("sel-count").textContent=n;document.getElementById("sel-plural").textContent=n===1?"":"s"}
+
+async function submitAvailability(){
+  const r=await getResponses();r[curPlayer]=[...curSel];await putResponses(r);
+  _cache["responses"]=r;
+  document.getElementById("result-name").textContent=curPlayer;
+  await renderResults();showStep("step-results");toast("Availability saved!");
+}
+
+async function renderResults(){
+  const sessions=await getSessions(),responses=await getResponses(),players=Object.keys(responses),total=players.length;
+  const wrap=document.getElementById("results-wrap");
+  if(!sessions.length||!total){wrap.innerHTML='<p style="text-align:center;color:var(--ink-faint);font-style:italic">No responses recorded yet.</p>';return;}
+
+  const rows=sessions.map(s=>{
+    const avail=players.filter(p=>(responses[p]||[]).includes(s.id));
+    return{...s,avail,count:avail.length};
+  });
+  const best=Math.max(...rows.map(r=>r.count),0);
+
+  wrap.innerHTML=`<table class="results-table">
+    <thead><tr><th>Date &amp; Time</th><th>Available</th><th>Who</th></tr></thead>
+    <tbody>${rows.map(({date,time,duration,avail,count})=>{
+      const d=localDate(date),isBest=count===best&&count>0,pct=total?Math.round(count/total*100):0;
+      const dl=duration?durLabel(duration):"";
+      return`<tr${isBest?' class="best-row"':""}>
+        <td>
+          <strong style="font-family:'Cinzel',serif;font-size:12px">${DS[d.getDay()]}</strong><br>
+          <span>${MS[d.getMonth()]} ${d.getDate()}</span>
+          ${time?`<div style="font-size:12px;color:var(--ink-faint)">${time}${dl?` · ${dl}`:""}</div>`:""}
+          ${isBest?'<span class="best-badge">Best</span>':""}
+        </td>
+        <td style="min-width:110px"><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div><div class="bar-label">${count}/${total}</div></div></td>
+        <td>${avail.length?avail.map(p=>`<span class="name-pill">${p}</span>`).join(""):'<span style="color:var(--ink-faint)">—</span>'}</td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table>
+  <p style="font-size:12px;color:var(--ink-faint);font-style:italic;text-align:center;margin-top:1rem">${total} ${total===1?"response":"responses"} recorded</p>`;
+}
+
+// ── Admin login ───────────────────────────────────────────────────────────────
+function openAdminLogin(){
+  document.getElementById("player-view").style.display="none";
+  document.getElementById("admin-view").classList.add("active");
+  document.getElementById("admin-login").style.display="block";
+  document.getElementById("admin-dash").style.display="none";
+  setTimeout(()=>document.getElementById("pw-input").focus(),50);
+}
+
+function checkPw(){
+  if(document.getElementById("pw-input").value===DM_PASSWORD){
+    document.getElementById("pw-input").value="";
+    document.getElementById("pw-error").textContent="";
+    document.getElementById("admin-login").style.display="none";
+    document.getElementById("admin-dash").style.display="block";
+    loadDash();
+  }else{document.getElementById("pw-error").textContent="Incorrect password."}
+}
+
+async function showPlayerView(){
+  document.getElementById("admin-view").classList.remove("active");
+  document.getElementById("player-view").style.display="block";
+  await buildGrid();
+}
+
+// ── Admin dashboard ───────────────────────────────────────────────────────────
+async function loadDash(){
+  const c=await getSettings();
+  document.getElementById("cfg-title").value=c.title||"";
+  document.getElementById("cfg-campaign").value=c.campaign||"";
+  document.getElementById("cfg-tagline").value=c.tagline||"";
+  await buildCal();await renderSessionList();await renderAdminResponses();
+}
+
+async function saveSettings(){
+  await putSettings({
+    title:document.getElementById("cfg-title").value,
+    campaign:document.getElementById("cfg-campaign").value,
+    tagline:document.getElementById("cfg-tagline").value
+  });
+  await applySettings();
+}
+
+async function clearResponses(){
+  if(!confirm("Clear ALL player responses? This cannot be undone."))return;
+  await putResponses({});_cache["responses"]={};await renderAdminResponses();await renderSessionList();toast("All responses cleared.");
+}
+
+// ── Calendar ──────────────────────────────────────────────────────────────────
+let calY=new Date().getFullYear(),calM=new Date().getMonth();
+
+function calPrev(){calM--;if(calM<0){calM=11;calY--;}buildCal()}
+function calNext(){calM++;if(calM>11){calM=0;calY++;}buildCal()}
+
+async function buildCal(){
+  document.getElementById("cal-title").textContent=ML[calM]+" "+calY;
+  const sessions=await getSessions();
+  // Count slots per date for the dot indicator
+  const slotCount={};
+  sessions.forEach(s=>{slotCount[s.date]=(slotCount[s.date]||0)+1});
+
+  const today=new Date(),firstDow=new Date(calY,calM,1).getDay();
+  const dim=new Date(calY,calM+1,0).getDate(),prevDim=new Date(calY,calM,0).getDate();
+  const grid=document.getElementById("cal-grid");grid.innerHTML="";
+
+  ["Su","Mo","Tu","We","Th","Fr","Sa"].forEach(d=>{
+    const h=document.createElement("div");h.className="cal-dow";h.textContent=d;grid.appendChild(h)});
+
+  for(let i=0;i<firstDow;i++){
+    const el=document.createElement("div");el.className="cal-day other-month";
+    el.textContent=prevDim-firstDow+1+i;grid.appendChild(el)}
+
+  for(let d=1;d<=dim;d++){
+    const key=dateKey(calY,calM,d);
+    const count=slotCount[key]||0;
+    const isToday=today.getFullYear()===calY&&today.getMonth()===calM&&today.getDate()===d;
+    const el=document.createElement("div");
+    el.className="cal-day"+(isToday?" today":"")+(count>0?" has-slots":"");
+    el.innerHTML=d+(count>0?`<div class="slot-count">${count} slot${count>1?"s":""}</div>`:"");
+    el.onclick=()=>calClick(key);grid.appendChild(el);
+  }
+
+  const total=firstDow+dim,rem=total%7?7-total%7:0;
+  for(let i=1;i<=rem;i++){
+    const el=document.createElement("div");el.className="cal-day other-month";el.textContent=i;grid.appendChild(el)}
+}
+
+let pendingDate="";
+
+function calClick(key){
+  // Always open the popup — no toggle removal from calendar
+  // Removal is done via the session list below
+  pendingDate=key;
+  document.getElementById("popup-date").textContent=dispLong(key);
+  const h=document.getElementById("t-hour");h.innerHTML="";
+  for(let i=1;i<=12;i++){const o=document.createElement("option");o.value=i;o.textContent=i;if(i===7)o.selected=true;h.appendChild(o)}
+  const m=document.getElementById("t-min");m.innerHTML="";
+  ["00","15","30","45"].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;m.appendChild(o)});
+  // Reset duration to default 180
+  document.getElementById("t-duration").value="180";
+  document.getElementById("time-popup").classList.add("open");
+}
+
+function closePopup(){document.getElementById("time-popup").classList.remove("open");pendingDate=""}
+
+async function confirmAdd(){
+  const h=document.getElementById("t-hour").value;
+  const m=document.getElementById("t-min").value;
+  const ap=document.getElementById("t-ampm").value;
+  const dur=parseInt(document.getElementById("t-duration").value,10);
+  const time=`${h}:${m} ${ap}`;
+  const sessions=await getSessions();
+  sessions.push({id:uid(),date:pendingDate,time,duration:dur});
+  sessions.sort((a,b)=>a.date!==b.date?a.date.localeCompare(b.date):a.time.localeCompare(b.time));
+  await putSessions(sessions);closePopup();await buildCal();await renderSessionList();
+  toast(`Added: ${dispShort(pendingDate)} at ${time} (${durLabel(dur)})`);
+}
+
+// ── Session list (grouped by date) ────────────────────────────────────────────
+async function renderSessionList(){
+  const sessions=await getSessions(),c=document.getElementById("session-list");
+  const genWrap=document.getElementById("gen-schedule-wrap");
+  if(!sessions.length){c.innerHTML='<div class="no-items">No sessions scheduled yet. Click a date on the calendar above.</div>';genWrap.style.display="none";return;}
+
+  const responses=await getResponses();
+  const players=Object.keys(responses);
+  const total=players.length;
+  const confirmed=await getConfirmed();
+
+  // Count respondents per slot id
+  const countById={};
+  sessions.forEach(s=>{
+    countById[s.id]=players.filter(p=>(responses[p]||[]).includes(s.id)).length;
+  });
+
+  // Group by date
+  const byDate={},dateOrder=[];
+  sessions.forEach(s=>{
+    if(!byDate[s.date]){byDate[s.date]=[];dateOrder.push(s.date)}
+    byDate[s.date].push(s);
+  });
+
+  // Best count across all slots (for highlighting)
+  const allCounts=Object.values(countById);
+  const best=allCounts.length?Math.max(...allCounts):0;
+
+  c.innerHTML=dateOrder.map(date=>{
+    const slots=byDate[date];
+    const dateBest=Math.max(...slots.map(s=>countById[s.id]||0));
+
+    return`<div class="session-group">
+      <div class="session-group-header">
+        <div class="session-group-date">${dispLong(date)}</div>
+        ${total>0?`<div class="date-tally ${dateBest===best&&best>0?"tally-best":dateBest>0?"tally-some":"tally-none"}">
+          ${dateBest} / ${total}
+        </div>`:""}
+      </div>
+      ${slots.map(s=>{
+        const n=countById[s.id]||0;
+        const pct=total?Math.round(n/total*100):0;
+        const names=players.filter(p=>(responses[p]||[]).includes(s.id));
+        const isConf=confirmed.has(s.id);
+        return`<div class="session-slot${isConf?" confirmed":""}">
+          <div style="flex:1;min-width:0">
+            <div class="s-time">${s.time||"No time set"} <span style="color:var(--admin-muted)">·</span> ${durLabel(s.duration||180)}</div>
+            ${total>0?`<div class="slot-response-row">
+              <div class="slot-bar-bg"><div class="slot-bar-fill" style="width:${pct}%"></div></div>
+              <div class="slot-bar-label">${n}/${total}</div>
+              ${names.length?`<div class="slot-names">${names.map(p=>`<span class="slot-name-pill">${p}</span>`).join("")}</div>`:""}
+            </div>`:""}
+            <label class="confirm-check${isConf?" on":""}">
+              <input type="checkbox" ${isConf?"checked":""} onchange="toggleConfirm('${s.id}',this)">
+              <div class="confirm-box">
+                <svg width="9" height="8" viewBox="0 0 9 8" fill="none" style="display:${isConf?"block":"none"}"><path d="M1 4l2.5 3L8 1" stroke="#1a1208" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <span class="confirm-label">${isConf?"✦ Confirmed for play":"Mark as confirmed"}</span>
+            </label>
+          </div>
+          <button class="remove-btn" onclick="removeSlot('${s.id}')" title="Remove this slot">×</button>
+        </div>`;
+      }).join("")}
+    </div>`;
+  }).join("");
+
+  // Show generate button if any slot is confirmed
+  genWrap.style.display=confirmed.size>0&&[...confirmed].some(id=>sessions.find(s=>s.id===id))?"flex":"none";
+}
+
+async function removeSlot(id){
+  const sessions=(await getSessions()).filter(s=>s.id!==id);
+  const responses=await getResponses();
+  Object.keys(responses).forEach(p=>{responses[p]=(responses[p]||[]).filter(sid=>sid!==id)});
+  const confirmed=await getConfirmed();confirmed.delete(id);
+  await putConfirmed(confirmed);
+  await putSessions(sessions);await putResponses(responses);
+  await buildCal();await renderSessionList();await renderAdminResponses();
+  toast("Slot removed.");
+}
+
+// ── Admin responses ───────────────────────────────────────────────────────────
+async function renderAdminResponses(){
+  const sessions=await getSessions(),responses=await getResponses(),players=Object.keys(responses),c=document.getElementById("admin-responses");
+  // Build a lookup id→slot for display
+  const slotById={};sessions.forEach(s=>{slotById[s.id]=s});
+
+  if(!players.length){c.innerHTML='<p class="no-items">No responses yet.</p>';return;}
+  c.innerHTML=`<table class="resp-table">
+    <thead><tr><th>Player</th><th>Available slots</th><th></th></tr></thead>
+    <tbody>${players.map(p=>{
+      const ids=responses[p]||[];
+      const pills=ids.filter(id=>slotById[id]).map(id=>{
+        const s=slotById[id];
+        return`<span class="avail-pill">${dispShort(s.date)} ${s.time}</span>`;
+      }).join("");
+      return`<tr>
+        <td style="color:var(--admin-gold);font-family:'Cinzel',serif;white-space:nowrap">${p}</td>
+        <td>${pills||'<span style="color:var(--admin-muted);font-style:italic">none</span>'}</td>
+        <td style="text-align:right">
+          <button class="btn btn-danger btn-sm" onclick="removePlayer('${p.replace(/'/g,"\\'")}')">Remove</button>
+        </td>
+      </tr>`;}).join("")}</tbody>
+  </table>`;
+}
+
+async function removePlayer(p){
+  if(!confirm(`Remove ${p}'s response?`))return;
+  const r=await getResponses();delete r[p];await putResponses(r);
+  await renderSessionList();await renderAdminResponses();toast(`${p} removed.`);
+}
+
+// ── Confirm toggle ────────────────────────────────────────────────────────────
+async function toggleConfirm(id){
+  const confirmed=await getConfirmed();
+  if(confirmed.has(id)){confirmed.delete(id)}else{confirmed.add(id)}
+  await putConfirmed(confirmed);
+  await renderSessionList();
+}
+
+// ── Schedule announcement modal ───────────────────────────────────────────────
+
+// Build a Google Calendar "add event" URL from a session slot
+function buildGCalUrl(s,title){
+  // Parse "7:00 PM" → 19, 0
+  const timeStr=s.time||"12:00 PM";
+  const m=timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  let hh=m?parseInt(m[1]):12, mm=m?parseInt(m[2]):0, ap=m?m[3].toUpperCase():"PM";
+  if(ap==="PM"&&hh!==12)hh+=12;
+  if(ap==="AM"&&hh===12)hh=0;
+  const dur=s.duration||180;
+  const endMin=(hh*60+mm+dur);
+  const endHH=Math.floor(endMin/60)%24, endMM=endMin%60;
+
+  const [y,mo,d]=s.date.split("-").map(Number);
+  function fmt(yr,month,day,H,M){
+    return`${yr}${pad(month)}${pad(day)}T${pad(H)}${pad(M)}00`;}
+
+  const start=fmt(y,mo,d,hh,mm);
+  const end=fmt(y,mo,d,endHH,endMM);
+  const details=encodeURIComponent(`${title} D&D session`);
+  const text=encodeURIComponent(`${title} — D&D Session`);
+  return`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}`;
+}
+
+async function openSchedModal(){
+  const sessions=await getSessions();
+  const confirmed=await getConfirmed();
+  const cfg=await getSettings();
+  const campaignName=cfg.campaign||"Das Versprechen";
+
+  const confirmedSlots=sessions.filter(s=>confirmed.has(s.id));
+  if(!confirmedSlots.length){toast("No confirmed sessions to announce.");return;}
+
+  document.getElementById("ann-title").textContent=campaignName;
+  document.getElementById("ann-subtitle").textContent=
+    confirmedSlots.length===1?"Upcoming Session":"Upcoming Sessions";
+
+  const icons=["⚔","🗡","🛡","🎲","📜","🏰","🌑","🕯"];
+  document.getElementById("ann-entries").innerHTML=confirmedSlots.map((s,i)=>{
+    const d=localDate(s.date);
+    const dl=s.duration?durLabel(s.duration):"";
+    const gcalUrl=buildGCalUrl(s,campaignName);
+    return`<div class="session-entry">
+      <div class="entry-icon">${icons[i%icons.length]}</div>
+      <div class="entry-body">
+        <div class="entry-date">${DS[d.getDay()]}, ${ML[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}</div>
+        <div class="entry-time">${s.time||"Time TBD"}${dl?` · ${dl}`:""}</div>
+        <a class="gcal-link" href="${gcalUrl}" target="_blank" rel="noopener">
+          📅 Add to Google Calendar
+        </a>
+      </div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("sched-modal").classList.add("open");
+}
+
+function closeSchedModal(){
+  document.getElementById("sched-modal").classList.remove("open");
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init(){
+  // Show a loading state on the parchment while data loads
+  showLoading(true);
+  await applySettings();
+  await buildGrid();
+  showLoading(false);
+}
+function showLoading(on){
+  let el=document.getElementById("loading-overlay");
+  if(on){
+    if(!el){el=document.createElement("div");el.id="loading-overlay";
+      el.style.cssText="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(242,232,208,.7);z-index:10;border-radius:3px;font-family:Cinzel,serif;font-size:13px;letter-spacing:.08em;color:#8a6c50";
+      el.textContent="Consulting the oracle…";
+      document.querySelector(".parchment").style.position="relative";
+      document.querySelector(".parchment").appendChild(el);}
+    el.style.display="flex";
+  }else{if(el)el.style.display="none";}
+}
+window.addEventListener("DOMContentLoaded",init);
+</script>
+</body>
+</html>
