@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meeting Availability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#2563eb;--blue-dark:#1d4ed8;--blue-light:#eff6ff;--blue-mid:#93c5fd;
+  --text:#0f172a;--text-mid:#475569;--text-faint:#94a3b8;
+  --bg:#f1f5f9;--surface:#ffffff;--border:#e2e8f0;--border-mid:#cbd5e1;
+  --green:#16a34a;--green-mid:#22c55e;--green-bg:#f0fdf4;--green-border:#bbf7d0;
+  --admin-bg:#1e293b;--admin-surface:#0f172a;--admin-border:#334155;
+  --admin-text:#e2e8f0;--admin-muted:#94a3b8;--admin-blue:#60a5fa;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);
+  min-height:100vh;padding:2rem 1rem 4rem;color:var(--text)}
+
+/* Card */
+.card{max-width:680px;margin:0 auto;background:var(--surface);
+  border-radius:10px;padding:2.5rem 2.5rem 3rem;
+  box-shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+  border:1px solid var(--border);position:relative}
+
+/* Admin panel */
+.admin-panel{max-width:680px;margin:0 auto;background:var(--admin-surface);
+  border-radius:10px;padding:2rem 2.5rem 2.5rem;
+  border:1px solid var(--admin-border);
+  box-shadow:0 4px 24px rgba(0,0,0,.3);display:none}
+.admin-panel.active{display:block}
+.admin-panel h1{font-size:18px;font-weight:700;color:var(--admin-blue);margin-bottom:4px}
+.admin-subtitle{font-size:13px;color:var(--admin-muted);margin-bottom:1.5rem}
+.admin-section{margin-bottom:1.75rem}
+.admin-section h2{font-size:11px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--admin-muted);margin-bottom:.75rem;
+  padding-bottom:6px;border-bottom:1px solid var(--admin-border)}
+
+/* Form controls */
+.admin-input{width:100%;padding:9px 12px;font-family:'Inter',system-ui,sans-serif;font-size:14px;
+  background:#1e293b;border:1px solid var(--admin-border);border-radius:6px;
+  color:var(--admin-text);outline:none;transition:border-color .2s}
+.admin-input:focus{border-color:var(--admin-blue)}
+.admin-input::placeholder{color:var(--admin-muted)}
+.admin-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.admin-row .admin-input{margin:0}
+.admin-row label{font-size:13px;color:var(--admin-muted);min-width:72px;flex-shrink:0}
+
+/* Calendar */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-title{font-size:14px;font-weight:600;color:var(--admin-blue)}
+.cal-nav{background:none;border:1px solid var(--admin-border);color:var(--admin-text);
+  padding:5px 12px;border-radius:6px;cursor:pointer;font-size:14px;transition:background .15s}
+.cal-nav:hover{background:var(--admin-border)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-dow{text-align:center;font-size:10px;font-weight:600;letter-spacing:.06em;
+  color:var(--admin-muted);padding:5px 0;text-transform:uppercase}
+.cal-day{text-align:center;padding:7px 2px;border-radius:6px;font-size:14px;
+  cursor:pointer;border:1px solid transparent;color:var(--admin-text);
+  transition:background .1s,border-color .1s;line-height:1.2;min-height:40px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
+.cal-day:hover{background:var(--admin-border)}
+.cal-day.other-month{color:#3a4a5a;cursor:default}
+.cal-day.other-month:hover{background:none}
+.cal-day.today{border-color:var(--admin-blue);color:var(--admin-blue)}
+.cal-day.has-slots{background:#1e3a5f;border-color:#3b82f6;color:#93c5fd}
+.cal-day.has-slots:hover{background:#1a3050}
+.slot-count{font-size:10px;font-weight:600;color:#60a5fa;margin-top:1px}
+
+/* Time popup */
+.time-popup{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:200;align-items:center;justify-content:center}
+.time-popup.open{display:flex}
+.time-box{background:var(--admin-surface);border:1px solid var(--admin-border);
+  border-radius:10px;padding:1.5rem;min-width:300px;
+  box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.time-box h3{font-size:14px;font-weight:600;color:var(--admin-blue);
+  margin-bottom:.75rem}
+.popup-date{font-size:15px;color:var(--admin-text);margin-bottom:1rem}
+.time-box label{font-size:11px;color:var(--admin-muted);display:block;
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-weight:600}
+.time-select-row{display:flex;gap:6px;margin-bottom:1rem;align-items:center}
+.time-sel{padding:8px 10px;background:#1e293b;border:1px solid var(--admin-border);
+  border-radius:6px;color:var(--admin-text);font-family:'Inter',system-ui,sans-serif;
+  font-size:14px;outline:none;flex:1;cursor:pointer}
+.time-sel:focus{border-color:var(--admin-blue)}
+.sep{color:var(--admin-muted);font-size:18px}
+.popup-btns{display:flex;gap:8px;margin-top:.25rem}
+
+/* Session list — grouped by date */
+.session-group{margin-bottom:10px;background:#1e293b;
+  border:1px solid var(--admin-border);border-radius:8px;overflow:hidden}
+.session-group-header{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;border-bottom:1px solid var(--admin-border)}
+.session-group-date{font-size:12px;font-weight:600;color:var(--admin-blue)}
+.date-tally{font-size:12px;font-weight:700;padding:3px 10px;
+  border-radius:99px;letter-spacing:.02em}
+.tally-best{background:#1e3a5f;color:#60a5fa;border:1px solid #3b82f6}
+.tally-some{background:#1e293b;color:var(--admin-muted);border:1px solid var(--admin-border)}
+.tally-none{background:transparent;color:#475569;border:1px solid #2d3f50}
+.session-slot{display:flex;align-items:flex-start;justify-content:space-between;
+  padding:8px 12px 8px 20px;gap:8px}
+.session-slot:not(:last-child){border-bottom:1px solid rgba(51,65,85,.5)}
+.session-slot .s-time{font-size:14px;color:var(--admin-text);margin-bottom:5px}
+.slot-response-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.slot-bar-bg{width:80px;height:6px;background:#334155;border-radius:99px;
+  overflow:hidden;border:1px solid var(--admin-border);flex-shrink:0}
+.slot-bar-fill{height:100%;background:#3b82f6;border-radius:99px}
+.slot-bar-label{font-size:11px;font-weight:600;color:var(--admin-muted);
+  min-width:28px;flex-shrink:0}
+.slot-names{display:flex;flex-wrap:wrap;gap:3px}
+.slot-name-pill{display:inline-block;padding:1px 7px;background:#1e3a5f;
+  border:1px solid #3b82f6;border-radius:99px;font-size:10px;
+  font-weight:600;color:#93c5fd}
+.remove-btn{background:none;border:none;color:#64748b;font-size:20px;
+  cursor:pointer;line-height:1;padding:0 4px;transition:color .15s}
+.remove-btn:hover{color:#ef4444}
+.no-items{font-size:14px;color:var(--admin-muted);font-style:italic;padding:6px 0}
+
+/* Confirmed slot checkbox */
+.confirm-check{display:flex;align-items:center;gap:6px;margin-top:5px;cursor:pointer;user-select:none}
+.confirm-check input{display:none}
+.confirm-box{width:15px;height:15px;border:1.5px solid var(--admin-border);border-radius:4px;
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.confirm-check.on .confirm-box{background:var(--admin-blue);border-color:var(--admin-blue)}
+.confirm-check .confirm-label{font-size:11px;font-weight:600;letter-spacing:.04em;
+  color:var(--admin-muted);transition:color .15s;text-transform:uppercase}
+.confirm-check.on .confirm-label{color:var(--admin-blue)}
+.session-slot.confirmed{background:rgba(59,130,246,.06)}
+
+/* Generate announcement button */
+.gen-schedule-wrap{margin-top:12px;display:flex;justify-content:flex-end}
+
+/* Announcement modal */
+.sched-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
+  z-index:400;align-items:flex-start;justify-content:center;
+  overflow-y:auto;padding:2rem 1rem 4rem}
+.sched-modal.open{display:flex}
+.sched-modal-inner{position:relative;width:100%;max-width:560px;margin:auto}
+.sched-close{position:absolute;top:-36px;right:0;background:none;border:none;
+  color:#94a3b8;font-size:14px;font-weight:500;cursor:pointer;
+  display:flex;align-items:center;gap:6px;letter-spacing:.04em}
+.sched-close:hover{color:#e2e8f0}
+
+/* Announcement card */
+.announce-card{background:var(--surface);border-radius:10px;
+  padding:2.5rem 2.5rem 3rem;border:1px solid var(--border);
+  box-shadow:0 4px 24px rgba(0,0,0,.12)}
+.announce-header{text-align:center;margin-bottom:1.75rem;padding-bottom:1.75rem;
+  border-bottom:1px solid var(--border)}
+.announce-org{font-size:12px;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--text-faint);margin-bottom:.5rem}
+.announce-title{font-size:clamp(22px,5vw,32px);font-weight:700;color:var(--text);line-height:1.2}
+.announce-subtitle{font-size:13px;font-weight:500;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--blue);margin-top:8px}
+.announce-divider{height:1px;background:var(--border);margin:1.25rem 0}
+.session-entries{display:flex;flex-direction:column;gap:12px;margin-bottom:1.5rem}
+.session-entry{display:flex;gap:16px;align-items:flex-start;
+  padding:14px 16px;background:var(--blue-light);
+  border:1px solid var(--blue-mid);border-radius:8px}
+.entry-icon{font-size:22px;flex-shrink:0;margin-top:2px}
+.entry-body{}
+.entry-date{font-size:15px;font-weight:600;color:var(--text)}
+.entry-time{font-size:15px;color:var(--text-mid);margin-top:3px}
+.entry-duration{font-size:11px;font-weight:600;letter-spacing:.06em;
+  color:var(--text-faint);margin-top:4px;text-transform:uppercase}
+.gcal-link{display:inline-flex;align-items:center;gap:5px;margin-top:10px;
+  padding:5px 12px;font-size:11px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;text-decoration:none;
+  background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.25);
+  border-radius:6px;color:var(--blue);transition:background .15s,border-color .15s}
+.gcal-link:hover{background:rgba(37,99,235,.15);border-color:var(--blue)}
+.announce-footer{text-align:center;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+.announce-footer p{font-size:14px;color:var(--text-mid);line-height:1.7}
+.copy-hint{text-align:center;margin-top:1rem;font-size:11px;font-weight:500;
+  letter-spacing:.06em;text-transform:uppercase;color:#64748b}
+
+/* Buttons */
+.btn{padding:9px 18px;font-family:'Inter',system-ui,sans-serif;font-size:13px;font-weight:600;
+  letter-spacing:.02em;border-radius:7px;cursor:pointer;border:1px solid;
+  transition:all .15s;white-space:nowrap;display:inline-block}
+.btn-blue{background:var(--blue);border-color:var(--blue-dark);color:#fff}
+.btn-blue:hover{background:var(--blue-dark)}
+.btn-dark{background:#1e293b;border-color:var(--admin-border);color:var(--admin-text)}
+.btn-dark:hover{background:var(--admin-border)}
+.btn-danger{background:transparent;border-color:#7f1d1d;color:#f87171}
+.btn-danger:hover{background:#3b0d0d}
+.btn-green{background:var(--green);border-color:#15803d;color:#fff;
+  width:100%;padding:13px;font-size:14px}
+.btn-green:hover{background:#15803d}
+.btn-outline{background:transparent;border-color:var(--border-mid);color:var(--text-mid)}
+.btn-outline:hover{background:#f8fafc;border-color:var(--text-faint)}
+.btn-sm{padding:6px 12px;font-size:12px}
+
+/* Card header */
+.header{text-align:center;margin-bottom:2rem}
+.header-logo{width:44px;height:44px;background:var(--blue-light);border-radius:10px;
+  border:1px solid var(--blue-mid);display:flex;align-items:center;justify-content:center;
+  font-size:22px;margin:0 auto 1rem}
+.header h1{font-size:clamp(20px,4vw,28px);font-weight:700;color:var(--text)}
+.header-sub{font-size:14px;color:var(--text-faint);margin-top:5px;font-weight:500;
+  id="disp-campaign"}
+.divider{height:1px;background:var(--border);margin:1.5rem 0}
+.step{display:none}.step.active{display:block}
+
+/* Attendee name step */
+.name-section{text-align:center;padding:1rem 0}
+.name-section p{font-size:16px;color:var(--text-mid);margin-bottom:1.5rem;line-height:1.6}
+.name-field{display:flex;gap:8px;max-width:400px;margin:0 auto}
+input[type="text"]{flex:1;padding:10px 14px;font-family:'Inter',system-ui,sans-serif;
+  font-size:15px;background:white;border:1px solid var(--border-mid);border-radius:7px;
+  color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s}
+input[type="text"]:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+input[type="text"]::placeholder{color:var(--text-faint)}
+
+/* Date grid */
+.instruction{font-size:16px;color:var(--text-mid);margin-bottom:1.25rem;text-align:center}
+.month-group{margin-bottom:1.5rem}
+.month-label{font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--text-faint);
+  text-transform:uppercase;margin-bottom:8px}
+.date-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}
+.date-tile{position:relative;cursor:pointer;user-select:none}
+.date-tile input{position:absolute;opacity:0;width:0;height:0}
+.tile-inner{display:flex;flex-direction:column;align-items:center;padding:10px 8px;
+  border:1px solid var(--border-mid);border-radius:8px;background:white;transition:all .12s}
+.date-tile:hover .tile-inner{background:#f8fafc;border-color:var(--blue)}
+.date-tile.checked .tile-inner{background:var(--green-bg);border-color:var(--green-mid);
+  box-shadow:inset 0 0 0 1px var(--green-mid)}
+.tile-dow{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--text-faint);
+  margin-bottom:3px;text-transform:uppercase}
+.date-tile.checked .tile-dow{color:var(--green)}
+.tile-day{font-size:22px;font-weight:700;color:var(--text);line-height:1}
+.date-tile.checked .tile-day{color:var(--green)}
+.tile-month{font-size:11px;font-weight:500;letter-spacing:.04em;color:var(--text-mid);margin-top:2px}
+.date-tile.checked .tile-month{color:var(--green-mid)}
+.tile-time{font-size:11px;color:var(--text-faint);margin-top:3px;text-align:center;line-height:1.4}
+.date-tile.checked .tile-time{color:var(--green-mid)}
+.checkmark{position:absolute;top:5px;right:5px;width:16px;height:16px;
+  background:var(--green);border-radius:50%;display:none;align-items:center;justify-content:center}
+.date-tile.checked .checkmark{display:flex}
+.checkmark svg{width:9px;height:9px}
+
+.selection-count{text-align:center;font-size:12px;font-weight:600;letter-spacing:.04em;
+  color:var(--text-faint);margin:1rem 0 .5rem;text-transform:uppercase}
+.selection-count span{color:var(--green)}
+
+/* Results */
+.results-table{width:100%;border-collapse:collapse}
+.results-table th{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text-faint);padding:6px 10px;border-bottom:1px solid var(--border);text-align:left}
+.results-table td{padding:9px 10px;border-bottom:1px solid var(--border);
+  font-size:15px;vertical-align:middle}
+.results-table tr:last-child td{border-bottom:none}
+.results-table tr.best-row td{background:var(--blue-light)}
+.bar-wrap{display:flex;align-items:center;gap:8px}
+.bar-bg{flex:1;height:8px;background:var(--border);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;background:var(--blue);border-radius:99px}
+.bar-label{font-size:12px;font-weight:600;color:var(--blue);min-width:36px;text-align:right}
+.name-pill{display:inline-block;padding:2px 8px;background:var(--green-bg);
+  border:1px solid var(--green-border);border-radius:99px;font-size:11px;
+  font-weight:500;color:var(--green);margin:2px}
+.best-badge{display:inline-block;padding:2px 8px;background:var(--blue);
+  border-radius:99px;font-size:10px;font-weight:700;color:white;
+  letter-spacing:.06em;text-transform:uppercase;margin-left:6px;vertical-align:middle}
+.action-row{display:flex;gap:10px;margin-top:1.5rem;flex-wrap:wrap}
+.action-row .btn{flex:1;min-width:140px;text-align:center}
+.footer-note{text-align:center;margin-top:1.5rem;font-size:12px;color:var(--text-faint)}
+.no-dates-notice{text-align:center;padding:2rem 1rem;color:var(--text-faint);
+  font-size:15px;line-height:1.8}
+
+/* Admin login */
+.pw-screen{text-align:center;padding:1rem 0}
+.pw-screen p{font-size:15px;color:var(--admin-muted);margin-bottom:1.25rem}
+.pw-field{display:flex;gap:8px;max-width:320px;margin:0 auto}
+input[type="password"]{flex:1;padding:9px 12px;font-family:'Inter',system-ui,sans-serif;
+  font-size:14px;background:#1e293b;border:1px solid var(--admin-border);
+  border-radius:6px;color:var(--admin-text);outline:none}
+input[type="password"]:focus{border-color:var(--admin-blue)}
+.pw-error{color:#f87171;font-size:13px;margin-top:8px;min-height:18px;text-align:center}
+.back-link{background:none;border:none;color:var(--admin-muted);font-size:13px;
+  font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px;
+  margin-top:1rem;display:inline-block}
+.back-link:hover{color:var(--admin-blue)}
+.admin-toggle{text-align:center;margin-top:1.5rem}
+.admin-toggle button{background:none;border:none;color:var(--text-faint);font-size:12px;
+  font-weight:500;letter-spacing:.04em;cursor:pointer;
+  text-decoration:underline;text-underline-offset:3px;opacity:.7}
+.admin-toggle button:hover{opacity:1}
+.admin-header{display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:1.5rem;flex-wrap:wrap;gap:8px}
+.admin-btns{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Admin response table */
+.resp-table{width:100%;border-collapse:collapse;font-size:13px}
+.resp-table th{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--admin-muted);padding:6px 10px;border-bottom:1px solid var(--admin-border);text-align:left}
+.resp-table td{padding:8px 10px;border-bottom:1px solid var(--admin-border);
+  color:var(--admin-text);vertical-align:top}
+.resp-table tr:last-child td{border-bottom:none}
+.avail-pill{display:inline-block;padding:2px 7px;background:#1e3a5f;
+  border:1px solid #3b82f6;border-radius:99px;font-size:11px;color:#93c5fd;
+  margin:2px;font-weight:500}
+
+/* Toast */
+.toast{position:fixed;bottom:2rem;left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:#0f172a;color:#e2e8f0;padding:10px 20px;border-radius:8px;
+  font-size:13px;font-weight:500;opacity:0;transition:opacity .3s,transform .3s;
+  pointer-events:none;z-index:300;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Returning hint */
+.returning-hint{margin-top:10px;font-size:12px;font-weight:500;letter-spacing:.02em;
+  color:var(--text-faint);min-height:16px;text-align:center}
+
+@media(max-width:480px){
+  .card,.admin-panel{padding:1.5rem 1.25rem 2rem}
+  .date-grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr))}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+  SETUP: Change the two values below.
+  Everything else is managed through the admin UI.
+  ═══════════════════════════════════════════════ -->
+<script>
+const ADMIN_PASSWORD = "pandor4!";       // ← Change to your own password
+
+// ── Supabase config ──────────────────────────────────────────────────────────
+// Uses the same Supabase project as the D&D scheduler; keys are prefixed
+// with "mtg_" to keep data separate.
+const SB_URL  = "https://oejfkgozxswpvjujbnkg.supabase.co/rest/v1";
+const SB_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lamZrZ296eHN3cHZqdWpibmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjUzMjEsImV4cCI6MjA5MzI0MTMyMX0.oyUR0kYcNogW3NF6E98hKFWrk9Ac4HzUwsq89SUSSqQ";
+const SB_HDR  = {"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY};
+// Keys stored: "mtg_settings", "mtg_sessions", "mtg_responses", "mtg_confirmed"
+const KEY_PFX = "mtg_";
+</script>
+<!-- ═══════════════════════════════════════════════ -->
+
+
+<!-- ── Attendee view ───────────────────────────── -->
+<div class="card" id="player-view">
+  <div class="header">
+    <div class="header-logo">📅</div>
+    <h1 id="disp-title">Meeting Availability</h1>
+    <div class="header-sub" id="disp-campaign"></div>
+  </div>
+  <div class="divider"></div>
+
+  <div id="step-name" class="step active">
+    <div class="name-section">
+      <p id="disp-tagline">Enter your name to indicate which times work for you.</p>
+      <div class="name-field">
+        <input type="text" id="player-input" placeholder="Your name…" maxlength="40"
+          onkeydown="if(event.key==='Enter')goToDates()"
+          oninput="checkReturning(this.value)" />
+        <button class="btn btn-blue" onclick="goToDates()">Continue</button>
+      </div>
+      <div class="returning-hint" id="returning-hint"></div>
+    </div>
+  </div>
+
+  <div id="step-dates" class="step">
+    <p class="instruction" id="dates-instr">Select every time slot that works for you.</p>
+    <div id="date-grid-wrap"></div>
+    <div class="selection-count"><span id="sel-count">0</span> slot<span id="sel-plural">s</span> selected</div>
+    <button class="btn btn-green" onclick="submitAvailability()">Submit My Availability</button>
+    <div class="footer-note">You can return anytime to update your choices.</div>
+  </div>
+
+  <div id="step-results" class="step">
+    <div style="text-align:center;margin-bottom:1.25rem">
+      <div style="font-size:18px;font-weight:700;color:var(--text)" id="result-name"></div>
+      <p style="color:var(--text-mid);font-size:15px;margin-top:4px">Your availability has been saved.</p>
+    </div>
+    <div class="divider"></div>
+    <div id="results-wrap"></div>
+    <div class="action-row">
+      <button class="btn btn-outline" onclick="goBack()">&#8592; Change my slots</button>
+      <button class="btn btn-blue" onclick="goToName()">Switch attendee</button>
+    </div>
+  </div>
+
+  <div class="admin-toggle">
+    <button onclick="openAdminLogin()">&#9881; Organizer Admin</button>
+  </div>
+</div>
+
+
+<!-- ── Admin panel ──────────────────────────────── -->
+<div class="admin-panel" id="admin-view">
+
+  <div id="admin-login">
+    <div class="pw-screen">
+      <h1 style="font-size:18px;font-weight:700;color:var(--admin-blue);margin-bottom:.5rem">Organizer Portal</h1>
+      <p>Enter the organizer password to manage meeting slots.</p>
+      <div class="pw-field">
+        <input type="password" id="pw-input" placeholder="Password…"
+          onkeydown="if(event.key==='Enter')checkPw()" />
+        <button class="btn btn-blue btn-sm" onclick="checkPw()">Enter</button>
+      </div>
+      <div class="pw-error" id="pw-error"></div>
+      <div style="margin-top:1rem"><button class="back-link" onclick="showPlayerView()">&#8592; Back to attendee view</button></div>
+    </div>
+  </div>
+
+  <div id="admin-dash" style="display:none">
+    <div class="admin-header">
+      <div>
+        <h1>Organizer Admin</h1>
+        <div class="admin-subtitle">Manage meeting settings and available time slots</div>
+      </div>
+      <div class="admin-btns">
+        <button class="btn btn-dark btn-sm" onclick="showPlayerView()">&#8592; Attendee View</button>
+        <button class="btn btn-danger btn-sm" onclick="clearResponses()">Clear All Responses</button>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <h2>Meeting Settings</h2>
+      <div class="admin-row">
+        <label>Title</label>
+        <input type="text" id="cfg-title" class="admin-input" placeholder="Meeting Availability" oninput="saveSettings()" />
+      </div>
+      <div class="admin-row">
+        <label>Subtitle</label>
+        <input type="text" id="cfg-campaign" class="admin-input" placeholder="e.g. Advisory Lunch" oninput="saveSettings()" />
+      </div>
+      <div class="admin-row">
+        <label>Tagline</label>
+        <input type="text" id="cfg-tagline" class="admin-input" placeholder="Enter your name to indicate which times work for you." oninput="saveSettings()" />
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <h2>Add Meeting Slots</h2>
+      <div class="cal-header">
+        <button class="cal-nav" onclick="calPrev()">&#8592;</button>
+        <div class="cal-title" id="cal-title"></div>
+        <button class="cal-nav" onclick="calNext()">&#8594;</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <p style="margin-top:8px;font-size:12px;color:var(--admin-muted)">
+        Click any date to add a time slot. Click again to add another slot on the same day.
+      </p>
+    </div>
+
+    <div class="admin-section">
+      <h2>Scheduled Slots</h2>
+      <div id="session-list"></div>
+      <div class="gen-schedule-wrap" id="gen-schedule-wrap" style="display:none">
+        <button class="btn btn-blue" onclick="openSchedModal()">&#128197; Generate Announcement</button>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <h2>Responses</h2>
+      <div id="admin-responses"></div>
+    </div>
+  </div>
+
+</div><!-- /admin-panel -->
+
+
+<!-- Announcement modal -->
+<div class="sched-modal" id="sched-modal">
+  <div class="sched-modal-inner">
+    <button class="sched-close" onclick="closeSchedModal()">&#10005; Close</button>
+    <div class="announce-card" id="announce-card">
+      <div class="announce-header">
+        <div class="announce-org" id="ann-org"></div>
+        <div class="announce-title" id="ann-title">Advisory Lunch</div>
+        <div class="announce-subtitle" id="ann-subtitle">Upcoming Meeting</div>
+      </div>
+      <div class="announce-divider"></div>
+      <div class="session-entries" id="ann-entries"></div>
+      <div class="announce-divider"></div>
+      <div class="announce-footer">
+        <p id="ann-footer">Please add this to your calendar and come ready to connect.</p>
+      </div>
+    </div>
+    <div class="copy-hint">Screenshot or share this announcement with attendees</div>
+  </div>
+</div>
+
+<!-- Time picker popup -->
+<div class="time-popup" id="time-popup">
+  <div class="time-box">
+    <h3>Add Time Slot</h3>
+    <div class="popup-date" id="popup-date"></div>
+    <label>Start time</label>
+    <div class="time-select-row">
+      <select class="time-sel" id="t-hour"></select>
+      <span class="sep">:</span>
+      <select class="time-sel" id="t-min"></select>
+      <select class="time-sel" id="t-ampm" style="flex:.65">
+        <option>AM</option><option selected>PM</option>
+      </select>
+    </div>
+    <label>Duration</label>
+    <div class="time-select-row">
+      <select class="time-sel" id="t-duration">
+        <option value="30">30 minutes</option>
+        <option value="45">45 minutes</option>
+        <option value="60" selected>1 hour</option>
+        <option value="90">1.5 hours</option>
+        <option value="120">2 hours</option>
+        <option value="150">2.5 hours</option>
+        <option value="180">3 hours</option>
+      </select>
+    </div>
+    <div class="popup-btns">
+      <button class="btn btn-blue" style="flex:1" onclick="confirmAdd()">Add Slot</button>
+      <button class="btn btn-dark" onclick="closePopup()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const ML=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+// ── Supabase storage ──────────────────────────────────────────────────────────
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+const _cache={};
+
+async function sbGet(key){
+  if(_cache[key]!==undefined)return _cache[key];
+  try{
+    const r=await fetch(`${SB_URL}/scheduler_data?key=eq.${KEY_PFX+key}&select=value`,
+      {headers:{...SB_HDR,"Accept":"application/json"}});
+    const rows=await r.json();
+    const val=rows.length?rows[0].value:null;
+    _cache[key]=val;
+    return val;
+  }catch(e){console.error("sbGet",e);return null;}
+}
+
+async function sbSet(key,value){
+  _cache[key]=value;
+  try{
+    await fetch(`${SB_URL}/scheduler_data`,{
+      method:"POST",
+      headers:{...SB_HDR,"Prefer":"resolution=merge-duplicates"},
+      body:JSON.stringify({key:KEY_PFX+key,value,updated_at:new Date().toISOString()})
+    });
+  }catch(e){console.error("sbSet",e);toast("Save error — check connection.");}
+}
+
+async function getSettings(){
+  const v=await sbGet("settings");
+  return v||{title:"Meeting Availability",campaign:"Advisory Lunch",tagline:"Enter your name to indicate which times work for you."};
+}
+async function getSessions(){
+  const v=await sbGet("sessions");
+  const sessions=v||[];
+  let dirty=false;
+  sessions.forEach(s=>{if(!s.id){s.id=uid();dirty=true;}});
+  if(dirty)await putSessions(sessions);
+  return sessions;
+}
+async function getResponses(){const v=await sbGet("responses");return v||{};}
+async function getConfirmed(){const v=await sbGet("confirmed");return new Set(v||[]);}
+async function putSettings(cfg){await sbSet("settings",cfg);}
+async function putSessions(s){await sbSet("sessions",s);}
+async function putResponses(r){await sbSet("responses",r);}
+async function putConfirmed(set){await sbSet("confirmed",[...set]);}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function pad(n){return String(n).padStart(2,"0")}
+function localDate(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function dateKey(y,m,d){return`${y}-${pad(m+1)}-${pad(d)}`}
+function dispLong(s){const d=localDate(s);return`${DS[d.getDay()]}, ${ML[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`}
+function dispShort(s){const d=localDate(s);return`${DS[d.getDay()]} ${MS[d.getMonth()]} ${d.getDate()}`}
+function durLabel(dur){return dur%60===0?`${dur/60}h`:`${Math.floor(dur/60)}h ${dur%60}m`}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2400)}
+
+// ── Apply settings to attendee view ──────────────────────────────────────────
+async function applySettings(){
+  const c=await getSettings();
+  document.getElementById("disp-title").textContent=c.title||"Meeting Availability";
+  document.getElementById("disp-campaign").textContent=c.campaign||"";
+  document.getElementById("disp-tagline").textContent=c.tagline||"";
+  document.title=c.title||"Meeting Availability";
+}
+
+// ── Attendee navigation ───────────────────────────────────────────────────────
+let curPlayer="",curSel=new Set();
+
+function showStep(id){document.querySelectorAll(".step").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active")}
+
+function goToName(){curPlayer="";curSel=new Set();document.getElementById("player-input").value="";document.getElementById("returning-hint").textContent="";showStep("step-name");setTimeout(()=>document.getElementById("player-input").focus(),50)}
+
+async function checkReturning(val){
+  const hint=document.getElementById("returning-hint");
+  const name=val.trim();
+  if(!name){hint.textContent="";return;}
+  const responses=await getResponses();
+  const existing=responses[name];
+  if(existing!==undefined){
+    hint.textContent=existing.length>0
+      ?"↩ Welcome back — your previous selections will be loaded."
+      :"↩ Welcome back — you previously submitted no availability.";
+  }else{hint.textContent="";}
+}
+
+async function goToDates(){
+  const n=document.getElementById("player-input").value.trim();
+  if(!n){toast("Please enter your name first.");return;}
+  curPlayer=n;
+  const responses=await getResponses();
+  curSel=new Set(responses[n]||[]);
+  await buildGrid();
+  document.getElementById("dates-instr").textContent=`Select every time slot that works for you, ${curPlayer}.`;
+  updateCount();showStep("step-dates");
+}
+
+async function goBack(){await buildGrid();updateCount();showStep("step-dates")}
+
+async function buildGrid(){
+  const sessions=await getSessions(),wrap=document.getElementById("date-grid-wrap");
+  if(!sessions.length){
+    wrap.innerHTML='<div class="no-dates-notice">No time slots have been posted yet.<br>Check back soon.</div>';
+    return;
+  }
+  const byMonth={};
+  sessions.forEach(s=>{
+    const d=localDate(s.date),k=d.getFullYear()+"-"+d.getMonth();
+    if(!byMonth[k])byMonth[k]={label:ML[d.getMonth()]+" "+d.getFullYear(),slots:[]};
+    byMonth[k].slots.push(s);
+  });
+  wrap.innerHTML=Object.values(byMonth).map(g=>`
+    <div class="month-group">
+      <div class="month-label">${g.label}</div>
+      <div class="date-grid">
+        ${g.slots.map(s=>{
+          const d=localDate(s.date),chk=curSel.has(s.id);
+          const dl=s.duration?durLabel(s.duration):"";
+          return`<label class="date-tile${chk?" checked":""}" data-id="${s.id}">
+            <input type="checkbox" ${chk?"checked":""} onchange="toggleSlot(this)"/>
+            <div class="tile-inner">
+              <div class="tile-dow">${DS[d.getDay()]}</div>
+              <div class="tile-day">${d.getDate()}</div>
+              <div class="tile-month">${MS[d.getMonth()]}</div>
+              ${s.time?`<div class="tile-time">${s.time}${dl?`<br>${dl}`:""}</div>`:""}
+            </div>
+            <div class="checkmark"><svg viewBox="0 0 9 8" fill="none"><path d="M1 4l2.5 3L8 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </label>`;
+        }).join("")}
+      </div>
+    </div>`).join("");
+}
+
+function toggleSlot(input){
+  const tile=input.closest(".date-tile"),id=tile.dataset.id;
+  if(input.checked){curSel.add(id);tile.classList.add("checked")}
+  else{curSel.delete(id);tile.classList.remove("checked")}
+  updateCount();
+}
+
+function updateCount(){const n=curSel.size;document.getElementById("sel-count").textContent=n;document.getElementById("sel-plural").textContent=n===1?"":"s"}
+
+async function submitAvailability(){
+  const r=await getResponses();r[curPlayer]=[...curSel];await putResponses(r);
+  _cache["responses"]=r;
+  document.getElementById("result-name").textContent=curPlayer;
+  await renderResults();showStep("step-results");toast("Availability saved!");
+}
+
+async function renderResults(){
+  const sessions=await getSessions(),responses=await getResponses(),players=Object.keys(responses),total=players.length;
+  const wrap=document.getElementById("results-wrap");
+  if(!sessions.length||!total){wrap.innerHTML='<p style="text-align:center;color:var(--text-faint)">No responses recorded yet.</p>';return;}
+  const rows=sessions.map(s=>{
+    const avail=players.filter(p=>(responses[p]||[]).includes(s.id));
+    return{...s,avail,count:avail.length};
+  });
+  const best=Math.max(...rows.map(r=>r.count),0);
+  wrap.innerHTML=`<table class="results-table">
+    <thead><tr><th>Date &amp; Time</th><th>Available</th><th>Who</th></tr></thead>
+    <tbody>${rows.map(({date,time,duration,avail,count})=>{
+      const d=localDate(date),isBest=count===best&&count>0,pct=total?Math.round(count/total*100):0;
+      const dl=duration?durLabel(duration):"";
+      return`<tr${isBest?' class="best-row"':""}>
+        <td>
+          <strong style="font-size:12px;font-weight:600;color:var(--text-faint);text-transform:uppercase">${DS[d.getDay()]}</strong><br>
+          <span>${MS[d.getMonth()]} ${d.getDate()}</span>
+          ${time?`<div style="font-size:12px;color:var(--text-faint)">${time}${dl?` · ${dl}`:""}</div>`:""}
+          ${isBest?'<span class="best-badge">Best</span>':""}
+        </td>
+        <td style="min-width:110px"><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div><div class="bar-label">${count}/${total}</div></div></td>
+        <td>${avail.length?avail.map(p=>`<span class="name-pill">${p}</span>`).join(""):'<span style="color:var(--text-faint)">—</span>'}</td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table>
+  <p style="font-size:12px;color:var(--text-faint);text-align:center;margin-top:1rem">${total} ${total===1?"response":"responses"} recorded</p>`;
+}
+
+// ── Admin login ───────────────────────────────────────────────────────────────
+function openAdminLogin(){
+  document.getElementById("player-view").style.display="none";
+  document.getElementById("admin-view").classList.add("active");
+  document.getElementById("admin-login").style.display="block";
+  document.getElementById("admin-dash").style.display="none";
+  setTimeout(()=>document.getElementById("pw-input").focus(),50);
+}
+
+function checkPw(){
+  if(document.getElementById("pw-input").value===ADMIN_PASSWORD){
+    document.getElementById("pw-input").value="";
+    document.getElementById("pw-error").textContent="";
+    document.getElementById("admin-login").style.display="none";
+    document.getElementById("admin-dash").style.display="block";
+    loadDash();
+  }else{document.getElementById("pw-error").textContent="Incorrect password."}
+}
+
+async function showPlayerView(){
+  document.getElementById("admin-view").classList.remove("active");
+  document.getElementById("player-view").style.display="block";
+  await buildGrid();
+}
+
+// ── Admin dashboard ───────────────────────────────────────────────────────────
+async function loadDash(){
+  const c=await getSettings();
+  document.getElementById("cfg-title").value=c.title||"";
+  document.getElementById("cfg-campaign").value=c.campaign||"";
+  document.getElementById("cfg-tagline").value=c.tagline||"";
+  await buildCal();await renderSessionList();await renderAdminResponses();
+}
+
+async function saveSettings(){
+  await putSettings({
+    title:document.getElementById("cfg-title").value,
+    campaign:document.getElementById("cfg-campaign").value,
+    tagline:document.getElementById("cfg-tagline").value
+  });
+  await applySettings();
+}
+
+async function clearResponses(){
+  if(!confirm("Clear ALL responses? This cannot be undone."))return;
+  await putResponses({});_cache["responses"]={};await renderAdminResponses();await renderSessionList();toast("All responses cleared.");
+}
+
+// ── Calendar ──────────────────────────────────────────────────────────────────
+let calY=new Date().getFullYear(),calM=new Date().getMonth();
+
+function calPrev(){calM--;if(calM<0){calM=11;calY--;}buildCal()}
+function calNext(){calM++;if(calM>11){calM=0;calY++;}buildCal()}
+
+async function buildCal(){
+  document.getElementById("cal-title").textContent=ML[calM]+" "+calY;
+  const sessions=await getSessions();
+  const slotCount={};
+  sessions.forEach(s=>{slotCount[s.date]=(slotCount[s.date]||0)+1});
+  const today=new Date(),firstDow=new Date(calY,calM,1).getDay();
+  const dim=new Date(calY,calM+1,0).getDate(),prevDim=new Date(calY,calM,0).getDate();
+  const grid=document.getElementById("cal-grid");grid.innerHTML="";
+  ["Su","Mo","Tu","We","Th","Fr","Sa"].forEach(d=>{
+    const h=document.createElement("div");h.className="cal-dow";h.textContent=d;grid.appendChild(h)});
+  for(let i=0;i<firstDow;i++){
+    const el=document.createElement("div");el.className="cal-day other-month";
+    el.textContent=prevDim-firstDow+1+i;grid.appendChild(el)}
+  for(let d=1;d<=dim;d++){
+    const key=dateKey(calY,calM,d);
+    const count=slotCount[key]||0;
+    const isToday=today.getFullYear()===calY&&today.getMonth()===calM&&today.getDate()===d;
+    const el=document.createElement("div");
+    el.className="cal-day"+(isToday?" today":"")+(count>0?" has-slots":"");
+    el.innerHTML=d+(count>0?`<div class="slot-count">${count} slot${count>1?"s":""}</div>`:"");
+    el.onclick=()=>calClick(key);grid.appendChild(el);
+  }
+  const total=firstDow+dim,rem=total%7?7-total%7:0;
+  for(let i=1;i<=rem;i++){
+    const el=document.createElement("div");el.className="cal-day other-month";el.textContent=i;grid.appendChild(el)}
+}
+
+let pendingDate="";
+
+function calClick(key){
+  pendingDate=key;
+  document.getElementById("popup-date").textContent=dispLong(key);
+  const h=document.getElementById("t-hour");h.innerHTML="";
+  for(let i=1;i<=12;i++){const o=document.createElement("option");o.value=i;o.textContent=i;if(i===12)o.selected=true;h.appendChild(o)}
+  const m=document.getElementById("t-min");m.innerHTML="";
+  ["00","15","30","45"].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;m.appendChild(o)});
+  document.getElementById("t-ampm").value="PM";
+  document.getElementById("t-duration").value="60";
+  document.getElementById("time-popup").classList.add("open");
+}
+
+function closePopup(){document.getElementById("time-popup").classList.remove("open");pendingDate=""}
+
+async function confirmAdd(){
+  const h=document.getElementById("t-hour").value;
+  const m=document.getElementById("t-min").value;
+  const ap=document.getElementById("t-ampm").value;
+  const dur=parseInt(document.getElementById("t-duration").value,10);
+  const time=`${h}:${m} ${ap}`;
+  const sessions=await getSessions();
+  sessions.push({id:uid(),date:pendingDate,time,duration:dur});
+  sessions.sort((a,b)=>a.date!==b.date?a.date.localeCompare(b.date):a.time.localeCompare(b.time));
+  await putSessions(sessions);closePopup();await buildCal();await renderSessionList();
+  toast(`Added: ${dispShort(pendingDate)} at ${time} (${durLabel(dur)})`);
+}
+
+// ── Session list (grouped by date) ────────────────────────────────────────────
+async function renderSessionList(){
+  const sessions=await getSessions(),c=document.getElementById("session-list");
+  const genWrap=document.getElementById("gen-schedule-wrap");
+  if(!sessions.length){c.innerHTML='<div class="no-items">No slots scheduled yet. Click a date on the calendar above.</div>';genWrap.style.display="none";return;}
+  const responses=await getResponses();
+  const players=Object.keys(responses);
+  const total=players.length;
+  const confirmed=await getConfirmed();
+  const countById={};
+  sessions.forEach(s=>{countById[s.id]=players.filter(p=>(responses[p]||[]).includes(s.id)).length;});
+  const byDate={},dateOrder=[];
+  sessions.forEach(s=>{if(!byDate[s.date]){byDate[s.date]=[];dateOrder.push(s.date)}byDate[s.date].push(s);});
+  const allCounts=Object.values(countById);
+  const best=allCounts.length?Math.max(...allCounts):0;
+  c.innerHTML=dateOrder.map(date=>{
+    const slots=byDate[date];
+    const dateBest=Math.max(...slots.map(s=>countById[s.id]||0));
+    return`<div class="session-group">
+      <div class="session-group-header">
+        <div class="session-group-date">${dispLong(date)}</div>
+        ${total>0?`<div class="date-tally ${dateBest===best&&best>0?"tally-best":dateBest>0?"tally-some":"tally-none"}">${dateBest} / ${total}</div>`:""}
+      </div>
+      ${slots.map(s=>{
+        const n=countById[s.id]||0;
+        const pct=total?Math.round(n/total*100):0;
+        const names=players.filter(p=>(responses[p]||[]).includes(s.id));
+        const isConf=confirmed.has(s.id);
+        return`<div class="session-slot${isConf?" confirmed":""}">
+          <div style="flex:1;min-width:0">
+            <div class="s-time">${s.time||"No time set"} <span style="color:var(--admin-muted)">·</span> ${durLabel(s.duration||60)}</div>
+            ${total>0?`<div class="slot-response-row">
+              <div class="slot-bar-bg"><div class="slot-bar-fill" style="width:${pct}%"></div></div>
+              <div class="slot-bar-label">${n}/${total}</div>
+              ${names.length?`<div class="slot-names">${names.map(p=>`<span class="slot-name-pill">${p}</span>`).join("")}</div>`:""}
+            </div>`:""}
+            <label class="confirm-check${isConf?" on":""}">
+              <input type="checkbox" ${isConf?"checked":""} onchange="toggleConfirm('${s.id}',this)">
+              <div class="confirm-box">
+                <svg width="9" height="8" viewBox="0 0 9 8" fill="none" style="display:${isConf?"block":"none"}"><path d="M1 4l2.5 3L8 1" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <span class="confirm-label">${isConf?"&#10003; Confirmed":"Mark as confirmed"}</span>
+            </label>
+          </div>
+          <button class="remove-btn" onclick="removeSlot('${s.id}')" title="Remove this slot">&#215;</button>
+        </div>`;
+      }).join("")}
+    </div>`;
+  }).join("");
+  genWrap.style.display=confirmed.size>0&&[...confirmed].some(id=>sessions.find(s=>s.id===id))?"flex":"none";
+}
+
+async function removeSlot(id){
+  const sessions=(await getSessions()).filter(s=>s.id!==id);
+  const responses=await getResponses();
+  Object.keys(responses).forEach(p=>{responses[p]=(responses[p]||[]).filter(sid=>sid!==id)});
+  const confirmed=await getConfirmed();confirmed.delete(id);
+  await putConfirmed(confirmed);
+  await putSessions(sessions);await putResponses(responses);
+  await buildCal();await renderSessionList();await renderAdminResponses();
+  toast("Slot removed.");
+}
+
+// ── Admin responses ───────────────────────────────────────────────────────────
+async function renderAdminResponses(){
+  const sessions=await getSessions(),responses=await getResponses(),players=Object.keys(responses),c=document.getElementById("admin-responses");
+  const slotById={};sessions.forEach(s=>{slotById[s.id]=s});
+  if(!players.length){c.innerHTML='<p class="no-items">No responses yet.</p>';return;}
+  c.innerHTML=`<table class="resp-table">
+    <thead><tr><th>Attendee</th><th>Available slots</th><th></th></tr></thead>
+    <tbody>${players.map(p=>{
+      const ids=responses[p]||[];
+      const pills=ids.filter(id=>slotById[id]).map(id=>{
+        const s=slotById[id];
+        return`<span class="avail-pill">${dispShort(s.date)} ${s.time}</span>`;
+      }).join("");
+      return`<tr>
+        <td style="color:var(--admin-blue);font-weight:600;white-space:nowrap">${p}</td>
+        <td>${pills||'<span style="color:var(--admin-muted);font-style:italic">none</span>'}</td>
+        <td style="text-align:right">
+          <button class="btn btn-danger btn-sm" onclick="removeAttendee('${p.replace(/'/g,"\\'")}')">Remove</button>
+        </td>
+      </tr>`;}).join("")}</tbody>
+  </table>`;
+}
+
+async function removeAttendee(p){
+  if(!confirm(`Remove ${p}'s response?`))return;
+  const r=await getResponses();delete r[p];await putResponses(r);
+  await renderSessionList();await renderAdminResponses();toast(`${p} removed.`);
+}
+
+// ── Confirm toggle ────────────────────────────────────────────────────────────
+async function toggleConfirm(id){
+  const confirmed=await getConfirmed();
+  if(confirmed.has(id)){confirmed.delete(id)}else{confirmed.add(id)}
+  await putConfirmed(confirmed);
+  await renderSessionList();
+}
+
+// ── Announcement modal ────────────────────────────────────────────────────────
+function buildGCalUrl(s,title){
+  const timeStr=s.time||"12:00 PM";
+  const match=timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  let hh=match?parseInt(match[1]):12, mm=match?parseInt(match[2]):0, ap=match?match[3].toUpperCase():"PM";
+  if(ap==="PM"&&hh!==12)hh+=12;
+  if(ap==="AM"&&hh===12)hh=0;
+  const dur=s.duration||60;
+  const endMin=(hh*60+mm+dur);
+  const endHH=Math.floor(endMin/60)%24, endMM=endMin%60;
+  const [y,mo,d]=s.date.split("-").map(Number);
+  function fmt(yr,month,day,H,M){return`${yr}${pad(month)}${pad(day)}T${pad(H)}${pad(M)}00`;}
+  const start=fmt(y,mo,d,hh,mm);
+  const end=fmt(y,mo,d,endHH,endMM);
+  const text=encodeURIComponent(title);
+  const details=encodeURIComponent(title);
+  return`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}`;
+}
+
+async function openSchedModal(){
+  const sessions=await getSessions();
+  const confirmed=await getConfirmed();
+  const cfg=await getSettings();
+  const meetingName=cfg.campaign||cfg.title||"Meeting";
+  const confirmedSlots=sessions.filter(s=>confirmed.has(s.id));
+  if(!confirmedSlots.length){toast("No confirmed slots to announce.");return;}
+  document.getElementById("ann-org").textContent=cfg.title||"";
+  document.getElementById("ann-title").textContent=meetingName;
+  document.getElementById("ann-subtitle").textContent=
+    confirmedSlots.length===1?"Confirmed Meeting":"Confirmed Meetings";
+  const icons=["📅","🗓","📆","🕐","📋","🤝"];
+  document.getElementById("ann-entries").innerHTML=confirmedSlots.map((s,i)=>{
+    const d=localDate(s.date);
+    const dl=s.duration?durLabel(s.duration):"";
+    const gcalUrl=buildGCalUrl(s,meetingName);
+    return`<div class="session-entry">
+      <div class="entry-icon">${icons[i%icons.length]}</div>
+      <div class="entry-body">
+        <div class="entry-date">${DS[d.getDay()]}, ${ML[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}</div>
+        <div class="entry-time">${s.time||"Time TBD"}${dl?` · ${dl}`:""}</div>
+        <a class="gcal-link" href="${gcalUrl}" target="_blank" rel="noopener">
+          &#128197; Add to Google Calendar
+        </a>
+      </div>
+    </div>`;
+  }).join("");
+  document.getElementById("sched-modal").classList.add("open");
+}
+
+function closeSchedModal(){document.getElementById("sched-modal").classList.remove("open");}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init(){
+  showLoading(true);
+  await applySettings();
+  await buildGrid();
+  showLoading(false);
+}
+
+function showLoading(on){
+  let el=document.getElementById("loading-overlay");
+  if(on){
+    if(!el){el=document.createElement("div");el.id="loading-overlay";
+      el.style.cssText="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.8);z-index:10;border-radius:10px;font-size:13px;font-weight:500;color:#94a3b8";
+      el.textContent="Loading…";
+      document.querySelector(".card").style.position="relative";
+      document.querySelector(".card").appendChild(el);}
+    el.style.display="flex";
+  }else{if(el)el.style.display="none";}
+}
+
+window.addEventListener("DOMContentLoaded",init);
+</script>
+</body>
+</html>
