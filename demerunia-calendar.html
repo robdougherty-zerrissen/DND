@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Demerunian Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: #2a1a08;
+      background-image:
+        radial-gradient(ellipse at 20% 20%, #3d2510 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 80%, #1a0d04 0%, transparent 60%);
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 2rem 1rem;
+      font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+    }
+    .page-wrap { width: 100%; max-width: 780px; }
+    .page-title {
+      font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.3em;
+      text-transform: uppercase; color: #c8a86a; text-align: center;
+      margin-bottom: 1.5rem; opacity: 0.7;
+    }
+    #cal-root {
+      background: #f5e9c9; border: 3px double #a0783a; border-radius: 4px;
+      padding: 2rem 2rem 1.5rem; color: #2c1a0e; position: relative;
+      box-shadow: 0 0 0 6px #2a1a08, 0 0 0 8px #6b4a1a, 0 8px 40px rgba(0,0,0,0.6);
+    }
+    #cal-root::before {
+      content: ''; position: absolute; inset: 7px;
+      border: 1px solid #e8d5a0; border-radius: 2px; pointer-events: none;
+    }
+    #cal-root::after {
+      content: '✦'; position: absolute; top: 14px; left: 14px;
+      font-size: 10px; color: #a0783a; opacity: 0.6; pointer-events: none;
+    }
+    .corner-br {
+      position: absolute; bottom: 14px; right: 14px;
+      font-size: 10px; color: #a0783a; opacity: 0.6;
+      pointer-events: none; user-select: none;
+    }
+    h1.cal-title {
+      font-family: 'Cinzel', serif; font-size: 26px; font-weight: 600;
+      text-align: center; letter-spacing: 0.1em; color: #7a3e10; margin-bottom: 4px;
+    }
+    .subtitle {
+      text-align: center; font-size: 11px; color: #8b6340;
+      letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 1.5rem;
+    }
+    .divider { border: none; border-top: 1px solid #e0c88a; margin: 0 2rem 1.25rem; }
+    .today-badge {
+      text-align: center; font-size: 12px; color: #8b6340;
+      font-style: italic; margin-bottom: 0.5rem;
+    }
+    .today-badge strong {
+      font-style: normal; color: #7a3e10; font-family: 'Cinzel', serif; font-weight: 600;
+    }
+    .year-input-wrap {
+      display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 1rem;
+    }
+    .year-label { font-size: 13px; color: #8b6340; letter-spacing: 0.12em; }
+    .year-input {
+      width: 80px; font-family: 'Cinzel', serif; font-size: 15px; color: #2c1a0e;
+      background: rgba(255,255,255,0.4); border: 1px solid #a0783a;
+      border-radius: 3px; padding: 4px 8px; text-align: center;
+    }
+    .year-input:focus { outline: none; border-color: #7a3e10; background: rgba(255,255,255,0.6); }
+    .nav-row {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; gap: 8px;
+    }
+    .nav-btn {
+      background: none; border: 1px solid #a0783a; border-radius: 3px;
+      color: #5c3d1e; font-family: 'Cinzel', serif; font-size: 13px;
+      padding: 5px 16px; cursor: pointer; letter-spacing: 0.05em;
+      transition: background 0.15s, color 0.15s;
+    }
+    .nav-btn:hover { background: #e8d5a0; color: #2c1a0e; }
+    .month-label {
+      font-family: 'Cinzel', serif; font-size: 20px; font-weight: 600;
+      color: #7a3e10; text-align: center; flex: 1; letter-spacing: 0.06em;
+    }
+    .weekday-headers { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 4px; gap: 2px; }
+    .wd-hdr {
+      text-align: center; font-family: 'Cinzel', serif; font-size: 9px;
+      letter-spacing: 0.05em; color: #8b6340; padding: 5px 2px;
+      border-bottom: 1px solid #e0c88a;
+    }
+    .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+    .day-cell {
+      min-height: 62px; background: rgba(255,255,255,0.15);
+      border: 0.5px solid #e0c88a; border-radius: 2px;
+      padding: 4px 4px 3px; display: flex; flex-direction: column;
+      align-items: center; gap: 3px; transition: background 0.12s;
+    }
+    .day-cell:hover { background: rgba(255,255,255,0.4); }
+    .day-cell.empty { background: transparent; border-color: transparent; }
+    .day-cell.today { background: rgba(122,62,16,0.13); border: 1px solid #a0783a; }
+    .day-num {
+      font-size: 12px; color: #5c3d1e; font-family: 'Cinzel', serif;
+      line-height: 1; align-self: flex-start;
+    }
+    .day-cell.today .day-num { color: #7a3e10; font-weight: 600; }
+    .moons-row { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; margin-top: auto; }
+    .moon-icon { width: 20px; height: 20px; flex-shrink: 0; }
+    .moon-legend {
+      display: flex; justify-content: center; gap: 2rem;
+      margin-top: 1.25rem; padding-top: 0.75rem;
+      border-top: 1px solid #e0c88a; flex-wrap: wrap;
+    }
+    .legend-group { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .legend-title { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.08em; color: #5c3d1e; }
+    .legend-phases { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    .legend-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .legend-item span { font-size: 9px; color: #8b6340; letter-spacing: 0.04em; }
+    @media (max-width: 600px) {
+      #cal-root { padding: 1.25rem 0.75rem 1rem; }
+      h1.cal-title { font-size: 20px; }
+      .wd-hdr { font-size: 7px; letter-spacing: 0; }
+      .day-cell { min-height: 52px; }
+      .moon-icon { width: 16px; height: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <p class="page-title">The World of Demerunia</p>
+    <div id="cal-root">
+      <span class="corner-br" aria-hidden="true">✦</span>
+      <h1 class="cal-title">The Demerunian Calendar</h1>
+      <div class="subtitle">Reckoning of the Ardenian Reich</div>
+      <hr class="divider" />
+      <div id="today-badge" class="today-badge"></div>
+      <div class="year-input-wrap">
+        <span class="year-label">Year</span>
+        <input class="year-input" type="number" id="year-input" min="0" max="9999" value="843" aria-label="Year" />
+        <span class="year-label">AR</span>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn" id="prev-month">◂ Prev</button>
+        <div class="month-label" id="month-label"></div>
+        <button class="nav-btn" id="next-month">Next ▸</button>
+      </div>
+      <div class="weekday-headers" id="wd-headers"></div>
+      <div class="days-grid" id="days-grid"></div>
+      <div class="moon-legend">
+        <div class="legend-group">
+          <div class="legend-title">Lumas &mdash; White Moon &middot; 32-day cycle</div>
+          <div class="legend-phases" id="legend-lumas"></div>
+        </div>
+        <div class="legend-group">
+          <div class="legend-title">Finstra &mdash; Grey Moon &middot; 28-day cycle</div>
+          <div class="legend-phases" id="legend-finstra"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MONTHS = [
+      {name:'Winterhammer',days:30},{name:'Dragonclaw',days:32},{name:'Sturmflut',days:28},
+      {name:'Wiederleb',days:30},{name:'Hochsonne',days:32},{name:'Dragonflame',days:32},
+      {name:'Tiefsonne',days:30},{name:'Erntezeit',days:28},{name:'Ausruhe',days:32},
+    ];
+    const WEEKDAYS = ['Sonntag','Montag','Drachentag','Silbertag','Sturmtag','Freytag','Sonnabend'];
+    const YEAR_DAYS = MONTHS.reduce((s,m) => s + m.days, 0);
+
+    const ABS_W1 = 843 * YEAR_DAYS;
+    const WEEKDAY_OFFSET = ((1 - (ABS_W1 % 7)) % 7 + 7) % 7;
+
+    const ABS_D28 = 843 * YEAR_DAYS + 27;
+    const MOONS = [
+      { name:'Lumas',   cycle:32, shift: ((24 - (ABS_D28 % 32)) % 32 + 32) % 32, color:'white' },
+      { name:'Finstra', cycle:28, shift: ((7  - (ABS_D28 % 28)) % 28 + 28) % 28, color:'grey'  },
+    ];
+
+    const TODAY_YEAR = 843, TODAY_MONTH = 0, TODAY_DAY = 25;
+    let currentYear = 843, currentMonthIdx = 0;
+
+    function absoluteDay(year, monthIdx, dayNum) {
+      let d = year * YEAR_DAYS;
+      for (let i = 0; i < monthIdx; i++) d += MONTHS[i].days;
+      return d + (dayNum - 1);
+    }
+    function weekdayOf(absDay) {
+      return ((absDay % 7) + WEEKDAY_OFFSET + 7) % 7;
+    }
+    function moonPhase(absDay, moon) {
+      return ((absDay + moon.shift) % moon.cycle + moon.cycle) % moon.cycle;
+    }
+
+    // Rewritten moon SVG using a clean "lit half + dark overlay ellipse" approach.
+    // Convention: waxing = right side lit, waning = left side lit.
+    // We always draw the full lit disk, then paint a dark shape over the unlit portion.
+    // The dark shape is: a semicircle on the dark side + an ellipse bridging the terminator.
+    // rx of the terminator ellipse = r * |cos(phase angle)|
+    //   phase angle goes 0→π over the waxing half (new→full) and π→2π over waning (full→new)
+    function moonSVG(phase, cycle, color) {
+      const isWhite = color === 'white';
+      const dark  = '#3a3a4a';
+      const lit   = isWhite ? '#f0ead0' : '#d8d8d8';
+      const border = '#22222e';
+      const r = 9, cx = 10, cy = 10, S = 20;
+
+      // Normalise to 0..1
+      const t = phase / cycle;
+
+      // Special cases: new and full
+      if (t < 1/32 || t > 31/32)
+        return svg(S, `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${dark}" stroke="${border}" stroke-width="0.8"/>`);
+      if (Math.abs(t - 0.5) < 1/32)
+        return svg(S, `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${lit}" stroke="${border}" stroke-width="0.8"/>`);
+
+      const waxing = t < 0.5;
+      // Phase angle: 0 at new, π at full, 2π back at new
+      const angle = t * 2 * Math.PI;
+      // rx of terminator ellipse = r * |cos(angle)|
+      // cos goes 1→0→-1→0→1; we want the magnitude for the ellipse width
+      const terminatorRx = r * Math.abs(Math.cos(angle));
+
+      // For a waxing moon: right half is lit.
+      //   Draw full lit disk, then cover left half with dark semicircle,
+      //   then on the right side draw a dark ellipse over the crescent region (if crescent)
+      //   OR on the left side draw a lit ellipse to reveal gibbous (if gibbous).
+      // Simpler approach: build the shape as a path.
+      //
+      // The lit region is bounded by:
+      //   - the right semicircle arc (always, for waxing)
+      //   - the terminator (an ellipse with rx=terminatorRx, ry=r)
+      //     - terminator bulges RIGHT for waxing crescent (t<0.25), LEFT for waxing gibbous (t>0.25)
+      //     - cos(angle) > 0 when t < 0.5 → crescent terminator on right side of center
+      //     Actually: for waxing crescent (0<t<0.25), cos>0, terminator ellipse faces right (same side as lit half) → crescent
+      //     for waxing gibbous (0.25<t<0.5), cos<0→ but we use |cos|, and the ellipse faces left → gibbous
+
+      // Path construction:
+      // Top of moon = (cx, cy-r), Bottom = (cx, cy+r)
+      // Outer arc: always the lit semicircle
+      // Inner arc: the terminator ellipse
+      // For waxing (right lit):
+      //   outer arc goes top→bottom sweeping RIGHT (large arc=0, sweep=1)
+      //   terminator: if crescent (t<0.25): ellipse sweeps back RIGHT (same direction narrows the sliver) sweep=0
+      //               if gibbous (t>0.25): ellipse sweeps back LEFT sweep=1
+      // For waning (left lit): mirror everything
+
+      let path;
+      if (waxing) {
+        const terminatorSweep = (t < 0.25) ? 0 : 1;
+        path = `M ${cx} ${cy - r}` +
+               ` A ${r} ${r} 0 0 1 ${cx} ${cy + r}` +
+               ` A ${terminatorRx} ${r} 0 0 ${terminatorSweep} ${cx} ${cy - r} Z`;
+      } else {
+        // Waning: left side lit
+        // outer arc: top→bottom sweeping LEFT (sweep=0)
+        // terminator: if t<0.75 (waning gibbous): sweep=0 (left); if t>0.75 (waning crescent): sweep=1 (right)
+        const terminatorSweep = (t < 0.75) ? 0 : 1;
+        path = `M ${cx} ${cy - r}` +
+               ` A ${r} ${r} 0 0 0 ${cx} ${cy + r}` +
+               ` A ${terminatorRx} ${r} 0 0 ${terminatorSweep} ${cx} ${cy - r} Z`;
+      }
+
+      return svg(S,
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${dark}" stroke="${border}" stroke-width="0.8"/>` +
+        `<path d="${path}" fill="${lit}"/>`
+      );
+    }
+
+    function svg(S, inner) {
+      return `<svg class="moon-icon" viewBox="0 0 ${S} ${S}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+    }
+
+    function renderCalendar() {
+      const month = MONTHS[currentMonthIdx];
+      document.getElementById('month-label').textContent = month.name;
+      document.getElementById('year-input').value = currentYear;
+      document.title = `${month.name} ${currentYear} AR — The Demerunian Calendar`;
+
+      const badge = document.getElementById('today-badge');
+      badge.innerHTML = (currentYear === TODAY_YEAR && currentMonthIdx === TODAY_MONTH)
+        ? `Today: <strong>25 Winterhammer 843 AR</strong>` : '';
+
+      document.getElementById('wd-headers').innerHTML =
+        WEEKDAYS.map(d => `<div class="wd-hdr">${d}</div>`).join('');
+
+      const absFirst = absoluteDay(currentYear, currentMonthIdx, 1);
+      const startWd = weekdayOf(absFirst);
+
+      let html = '';
+      for (let i = 0; i < startWd; i++) html += `<div class="day-cell empty"></div>`;
+      for (let d = 1; d <= month.days; d++) {
+        const isToday = currentYear === TODAY_YEAR && currentMonthIdx === TODAY_MONTH && d === TODAY_DAY;
+        const absDay = absoluteDay(currentYear, currentMonthIdx, d);
+        const lp = moonPhase(absDay, MOONS[0]);
+        const fp = moonPhase(absDay, MOONS[1]);
+        html += `<div class="day-cell${isToday ? ' today' : ''}">
+          <div class="day-num">${d}</div>
+          <div class="moons-row">
+            ${moonSVG(lp, MOONS[0].cycle, 'white')}
+            ${moonSVG(fp, MOONS[1].cycle, 'grey')}
+          </div>
+        </div>`;
+      }
+      document.getElementById('days-grid').innerHTML = html;
+
+      ['lumas', 'finstra'].forEach((id, i) => {
+        const moon = MOONS[i];
+        const phases = [0, 0.25, 0.5, 0.75];
+        const labels = ['New', 'First Qtr', 'Full', 'Last Qtr'];
+        document.getElementById(`legend-${id}`).innerHTML = phases.map((p, j) => {
+          const phase = Math.round(p * moon.cycle);
+          return `<div class="legend-item">${moonSVG(phase, moon.cycle, moon.color)}<span>${labels[j]}</span></div>`;
+        }).join('');
+      });
+    }
+
+    document.getElementById('prev-month').addEventListener('click', () => {
+      currentMonthIdx--;
+      if (currentMonthIdx < 0) { currentMonthIdx = MONTHS.length - 1; currentYear--; }
+      renderCalendar();
+    });
+    document.getElementById('next-month').addEventListener('click', () => {
+      currentMonthIdx++;
+      if (currentMonthIdx >= MONTHS.length) { currentMonthIdx = 0; currentYear++; }
+      renderCalendar();
+    });
+    document.getElementById('year-input').addEventListener('change', e => {
+      const v = parseInt(e.target.value);
+      if (!isNaN(v) && v >= 0) { currentYear = v; renderCalendar(); }
+    });
+
+    renderCalendar();
+  </script>
+</body>
+</html>
