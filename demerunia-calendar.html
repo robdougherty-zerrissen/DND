@@ -51,13 +51,6 @@
       letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 1.5rem;
     }
     .divider { border: none; border-top: 1px solid #e0c88a; margin: 0 2rem 1.25rem; }
-    .today-badge {
-      text-align: center; font-size: 12px; color: #8b6340;
-      font-style: italic; margin-bottom: 0.5rem;
-    }
-    .today-badge strong {
-      font-style: normal; color: #7a3e10; font-family: 'Cinzel', serif; font-weight: 600;
-    }
     .year-input-wrap {
       display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 1rem;
     }
@@ -90,19 +83,17 @@
     }
     .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
     .day-cell {
-      min-height: 62px; background: rgba(255,255,255,0.15);
+      min-height: 74px; background: rgba(255,255,255,0.15);
       border: 0.5px solid #e0c88a; border-radius: 2px;
       padding: 4px 4px 3px; display: flex; flex-direction: column;
       align-items: center; gap: 3px; transition: background 0.12s;
     }
     .day-cell:hover { background: rgba(255,255,255,0.4); }
     .day-cell.empty { background: transparent; border-color: transparent; }
-    .day-cell.today { background: rgba(122,62,16,0.13); border: 1px solid #a0783a; }
     .day-num {
       font-size: 12px; color: #5c3d1e; font-family: 'Cinzel', serif;
       line-height: 1; align-self: flex-start;
     }
-    .day-cell.today .day-num { color: #7a3e10; font-weight: 600; }
     .moons-row { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; margin-top: auto; }
     .moon-icon { width: 20px; height: 20px; flex-shrink: 0; }
     .moon-legend {
@@ -119,7 +110,7 @@
       #cal-root { padding: 1.25rem 0.75rem 1rem; }
       h1.cal-title { font-size: 20px; }
       .wd-hdr { font-size: 7px; letter-spacing: 0; }
-      .day-cell { min-height: 52px; }
+      .day-cell { min-height: 62px; }
       .moon-icon { width: 16px; height: 16px; }
     }
   </style>
@@ -132,7 +123,6 @@
       <h1 class="cal-title">The Demerunian Calendar</h1>
       <div class="subtitle">Reckoning of the Ardenian Reich</div>
       <hr class="divider" />
-      <div id="today-badge" class="today-badge"></div>
       <div class="year-input-wrap">
         <span class="year-label">Year</span>
         <input class="year-input" type="number" id="year-input" min="0" max="9999" value="843" aria-label="Year" />
@@ -176,7 +166,6 @@
       { name:'Finstra', cycle:28, shift: ((7  - (ABS_D28 % 28)) % 28 + 28) % 28, color:'grey'  },
     ];
 
-    const TODAY_YEAR = 843, TODAY_MONTH = 0, TODAY_DAY = 25;
     let currentYear = 843, currentMonthIdx = 0;
 
     function absoluteDay(year, monthIdx, dayNum) {
@@ -276,10 +265,6 @@
       document.getElementById('year-input').value = currentYear;
       document.title = `${month.name} ${currentYear} AR — The Demerunian Calendar`;
 
-      const badge = document.getElementById('today-badge');
-      badge.innerHTML = (currentYear === TODAY_YEAR && currentMonthIdx === TODAY_MONTH)
-        ? `Today: <strong>25 Winterhammer 843 AR</strong>` : '';
-
       document.getElementById('wd-headers').innerHTML =
         WEEKDAYS.map(d => `<div class="wd-hdr">${d}</div>`).join('');
 
@@ -289,11 +274,10 @@
       let html = '';
       for (let i = 0; i < startWd; i++) html += `<div class="day-cell empty"></div>`;
       for (let d = 1; d <= month.days; d++) {
-        const isToday = currentYear === TODAY_YEAR && currentMonthIdx === TODAY_MONTH && d === TODAY_DAY;
         const absDay = absoluteDay(currentYear, currentMonthIdx, d);
         const lp = moonPhase(absDay, MOONS[0]);
         const fp = moonPhase(absDay, MOONS[1]);
-        html += `<div class="day-cell${isToday ? ' today' : ''}">
+        html += `<div class="day-cell">
           <div class="day-num">${d}</div>
           <div class="moons-row">
             ${moonSVG(lp, MOONS[0].cycle, 'white')}
