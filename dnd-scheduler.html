@@ -626,8 +626,10 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 // In-memory cache so reads within one page load are instant
 const _cache={};
 
-async function sbGet(key){
-  if(_cache[key]!==undefined)return _cache[key];
+async function sbGet(key,fresh){
+  // Pass fresh=true to bypass the cache and re-read from the server. Used before a
+  // read-modify-write so we merge into the latest data instead of a stale snapshot.
+  if(!fresh&&_cache[key]!==undefined)return _cache[key];
   try{
     const r=await fetch(`${SB_URL}/scheduler_data?key=eq.${key}&select=value`,
       {headers:{...SB_HDR,"Accept":"application/json"}});
@@ -661,7 +663,7 @@ async function getSessions(){
   if(dirty)await putSessions(sessions);
   return sessions;
 }
-async function getResponses(){const v=await sbGet("responses")||{};const out={};for(const k in v)out[k]=normResp(v[k]);return out;}
+async function getResponses(fresh){const v=await sbGet("responses",fresh)||{};const out={};for(const k in v)out[k]=normResp(v[k]);return out;}
 // Normalize a player's response into {slotId:{status:"yes"|"maybe"|"no"|"",note:""}}.
 // Legacy responses were arrays of "available" slot ids → treated as "yes".
 function normResp(v){
@@ -787,7 +789,9 @@ function updateCount(){const n=Object.values(curResp).filter(e=>e&&e.status).len
 async function submitAvailability(){
   const clean={};
   for(const id in curResp){const e=curResp[id];if(e&&(e.status||(e.note&&e.note.trim())))clean[id]={status:e.status||"",note:(e.note||"").trim()};}
-  const r=await getResponses();r[curPlayer]=clean;await putResponses(r);
+  // Re-read the latest responses from the server (bypassing cache) so a stale
+  // snapshot can't overwrite another player who responded since this page loaded.
+  const r=await getResponses(true);r[curPlayer]=clean;await putResponses(r);
   _cache["responses"]=r;
   document.getElementById("result-name").textContent=curPlayer;
   await renderResults();showStep("step-results");toast("Availability saved!");
@@ -1035,7 +1039,7 @@ async function renderSessionList(){
 
 async function removeSlot(id){
   const sessions=(await getSessions()).filter(s=>s.id!==id);
-  const responses=await getResponses();
+  const responses=await getResponses(true);
   Object.keys(responses).forEach(p=>{delete responses[p][id]});
   const confirmed=await getConfirmed();confirmed.delete(id);
   await putConfirmed(confirmed);
@@ -1072,7 +1076,7 @@ async function renderAdminResponses(){
 
 async function removePlayer(p){
   if(!confirm(`Remove ${p}'s response?`))return;
-  const r=await getResponses();delete r[p];await putResponses(r);
+  const r=await getResponses(true);delete r[p];await putResponses(r);
   await renderSessionList();await renderAdminResponses();toast(`${p} removed.`);
 }
 
