@@ -132,6 +132,13 @@ body{font-family:'Crimson Pro',Georgia,serif;background:#0e0806;
 .slot-name-pill{display:inline-block;padding:1px 7px;background:#1a3a18;
   border:1px solid #2d5a27;border-radius:99px;font-size:10px;
   font-family:'Cinzel',serif;color:#97c459}
+.slot-name-pill.maybe{background:#3a2f10;border-color:#7a5c14;color:#d9b64a}
+.slot-name-pill.no{background:#3a1818;border-color:#7a3030;color:#d98a8a}
+.slot-tally{font-family:'Cinzel',serif;font-size:11px;font-weight:600;
+  color:var(--admin-muted);flex-shrink:0}
+.slot-notes{flex-basis:100%;margin-top:3px;display:flex;flex-direction:column;gap:2px}
+.slot-note{font-family:'Crimson Pro',serif;font-size:12px;color:var(--admin-text);font-style:italic}
+.slot-note strong{color:var(--admin-gold);font-style:normal}
 .remove-btn{background:none;border:none;color:#7a3030;font-size:20px;
   cursor:pointer;line-height:1;padding:0 4px;transition:color .15s}
 .remove-btn:hover{color:#c04040}
@@ -274,7 +281,7 @@ input[type="text"]::placeholder{color:var(--ink-faint)}
 .month-group{margin-bottom:1.5rem}
 .month-label{font-family:'Cinzel',serif;font-size:12px;font-weight:600;
   letter-spacing:.12em;color:var(--ink-faint);text-transform:uppercase;margin-bottom:8px}
-.date-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:6px}
+.date-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .date-tile{position:relative;cursor:pointer;user-select:none}
 .date-tile input{position:absolute;opacity:0;width:0;height:0}
 .tile-inner{display:flex;flex-direction:column;align-items:center;padding:10px 8px;
@@ -301,6 +308,29 @@ input[type="text"]::placeholder{color:var(--ink-faint)}
 .selection-count{text-align:center;font-family:'Cinzel',serif;font-size:12px;
   color:var(--ink-faint);letter-spacing:.06em;margin:1rem 0 .5rem}
 .selection-count span{color:var(--green);font-weight:600}
+
+/* Three-state day voting (player tiles) */
+.vote-row{display:flex;gap:4px;margin-top:8px;width:100%}
+.vote-btn{flex:1;padding:5px 0;border:1px solid var(--border);border-radius:3px;
+  background:white;cursor:pointer;font-size:14px;font-weight:700;line-height:1;
+  color:var(--ink-faint);font-family:'Cinzel',serif;transition:all .12s}
+.vote-btn:hover{border-color:var(--ink-mid)}
+.vote-yes.on{background:var(--green-mid);border-color:var(--green);color:white}
+.vote-maybe.on{background:var(--gold-light);border-color:var(--gold);color:white}
+.vote-no.on{background:#b85c5c;border-color:#7a3030;color:white}
+.date-tile .tile-note{position:static;opacity:1;height:auto;width:100%;box-sizing:border-box;
+  margin-top:6px;padding:4px 6px;font-family:'Crimson Pro',serif;font-size:12px;
+  border:1px solid var(--border);border-radius:3px;background:var(--parch-dark);
+  color:var(--ink);outline:none}
+.date-tile .tile-note:focus{border-color:var(--gold)}
+.date-tile .tile-note::placeholder{color:var(--ink-faint);font-style:italic}
+.date-tile.status-yes .tile-inner{background:var(--green-bg);border-color:var(--green-mid)}
+.date-tile.status-maybe .tile-inner{background:#f7efd8;border-color:var(--gold)}
+.date-tile.status-no .tile-inner{background:#f3e3e3;border-color:#b85c5c}
+.name-pill.maybe{background:#f7efd8;border-color:var(--gold);color:#7a5a08}
+.name-pill.no{background:#f3e3e3;border-color:#b85c5c;color:#7a3030}
+.avail-pill.maybe{background:#3a2f10;border-color:#7a5c14;color:#d9b64a}
+.avail-pill.no{background:#3a1818;border-color:#7a3030;color:#d98a8a}
 
 /* Results */
 .results-table{width:100%;border-collapse:collapse}
@@ -421,7 +451,7 @@ const SB_HDR  = {"Content-Type":"application/json","apikey":SB_KEY,"Authorizatio
   <div id="step-dates" class="step">
     <p class="instruction" id="dates-instr">Check every time slot that works for you.</p>
     <div id="date-grid-wrap"></div>
-    <div class="selection-count"><span id="sel-count">0</span> slot<span id="sel-plural">s</span> selected</div>
+    <div class="selection-count"><span id="sel-count">0</span> day<span id="sel-plural">s</span> marked</div>
     <button class="btn btn-green" onclick="submitAvailability()">Submit My Availability</button>
     <div class="footer-note">You can return anytime to update your choices.</div>
   </div>
@@ -434,7 +464,7 @@ const SB_HDR  = {"Content-Type":"application/json","apikey":SB_KEY,"Authorizatio
     <div class="divider"><div class="divider-icon">📜</div></div>
     <div id="results-wrap"></div>
     <div class="action-row">
-      <button class="btn btn-outline" onclick="goBack()">← Change my slots</button>
+      <button class="btn btn-outline" onclick="goBack()">← Change my responses</button>
       <button class="btn btn-gold" onclick="goToName()">Switch player</button>
     </div>
   </div>
@@ -501,6 +531,7 @@ const SB_HDR  = {"Content-Type":"application/json","apikey":SB_KEY,"Authorizatio
       <p style="margin-top:8px;font-size:12px;color:var(--admin-muted);font-style:italic">
         Click any date to add a time slot. Click again to add another slot on the same day.
       </p>
+      <button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="resetCalendar()">Reset Calendar</button>
     </div>
 
     <div class="admin-section">
@@ -630,7 +661,17 @@ async function getSessions(){
   if(dirty)await putSessions(sessions);
   return sessions;
 }
-async function getResponses(){const v=await sbGet("responses");return v||{};}
+async function getResponses(){const v=await sbGet("responses")||{};const out={};for(const k in v)out[k]=normResp(v[k]);return out;}
+// Normalize a player's response into {slotId:{status:"yes"|"maybe"|"no"|"",note:""}}.
+// Legacy responses were arrays of "available" slot ids → treated as "yes".
+function normResp(v){
+  const o={};
+  if(Array.isArray(v)){v.forEach(id=>{o[id]={status:"yes",note:""}});return o;}
+  if(v&&typeof v==="object"){for(const id in v){const e=v[id];
+    o[id]=typeof e==="string"?{status:e,note:""}:{status:(e&&e.status)||"",note:(e&&e.note)||""};}}
+  return o;
+}
+function escAttr(s){return String(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");}
 async function getConfirmed(){const v=await sbGet("confirmed");return new Set(v||[]);}
 async function putSettings(cfg){await sbSet("settings",cfg);}
 async function putSessions(s){await sbSet("sessions",s);}
@@ -656,11 +697,11 @@ async function applySettings(){
 }
 
 // ── Player navigation ─────────────────────────────────────────────────────────
-let curPlayer="",curSel=new Set();
+let curPlayer="",curResp={};
 
 function showStep(id){document.querySelectorAll(".step").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active")}
 
-function goToName(){curPlayer="";curSel=new Set();document.getElementById("player-input").value="";document.getElementById("returning-hint").textContent="";showStep("step-name");setTimeout(()=>document.getElementById("player-input").focus(),50)}
+function goToName(){curPlayer="";curResp={};document.getElementById("player-input").value="";document.getElementById("returning-hint").textContent="";showStep("step-name");setTimeout(()=>document.getElementById("player-input").focus(),50)}
 
 async function checkReturning(val){
   const hint=document.getElementById("returning-hint");
@@ -669,7 +710,8 @@ async function checkReturning(val){
   const responses=await getResponses();
   const existing=responses[name];
   if(existing!==undefined){
-    hint.textContent=existing.length>0
+    const marked=Object.values(existing).filter(e=>e.status).length;
+    hint.textContent=marked>0
       ?"↩ Returning adventurer — your previous choices will be loaded."
       :"↩ Returning adventurer — you previously submitted no availability.";
   }else{
@@ -682,9 +724,9 @@ async function goToDates(){
   if(!n){toast("Please enter your name first.");return;}
   curPlayer=n;
   const responses=await getResponses();
-  curSel=new Set(responses[n]||[]);
+  curResp=JSON.parse(JSON.stringify(responses[n]||{}));
   await buildGrid();
-  document.getElementById("dates-instr").textContent=`Check every time slot that works for you, ${curPlayer}.`;
+  document.getElementById("dates-instr").textContent=`Mark each date, ${curPlayer} — ✓ good, ? maybe, ✗ can't. Add a note if you like.`;
   updateCount();showStep("step-dates");
 }
 
@@ -707,34 +749,45 @@ async function buildGrid(){
       <div class="month-label">${g.label}</div>
       <div class="date-grid">
         ${g.slots.map(s=>{
-          const d=localDate(s.date),chk=curSel.has(s.id);
+          const d=localDate(s.date),e=curResp[s.id]||{status:"",note:""},st=e.status;
           const dl=s.duration?durLabel(s.duration):"";
-          return`<label class="date-tile${chk?" checked":""}" data-id="${s.id}">
-            <input type="checkbox" ${chk?"checked":""} onchange="toggleSlot(this)"/>
+          return`<div class="date-tile${st?" status-"+st:""}" data-id="${s.id}">
             <div class="tile-inner">
               <div class="tile-dow">${DS[d.getDay()]}</div>
               <div class="tile-day">${d.getDate()}</div>
               <div class="tile-month">${MS[d.getMonth()]}</div>
               ${s.time?`<div class="tile-time">${s.time}${dl?`<br>${dl}`:""}</div>`:""}
+              <div class="vote-row">
+                <button type="button" class="vote-btn vote-yes${st==="yes"?" on":""}" onclick="setStatus('${s.id}','yes')" title="Good for me">✓</button>
+                <button type="button" class="vote-btn vote-maybe${st==="maybe"?" on":""}" onclick="setStatus('${s.id}','maybe')" title="Maybe / unsure">?</button>
+                <button type="button" class="vote-btn vote-no${st==="no"?" on":""}" onclick="setStatus('${s.id}','no')" title="Can't make it">✗</button>
+              </div>
+              <input type="text" class="tile-note" maxlength="80" placeholder="Add note…" value="${escAttr(e.note)}" oninput="setNote('${s.id}',this.value)"/>
             </div>
-            <div class="checkmark"><svg viewBox="0 0 9 8" fill="none"><path d="M1 4l2.5 3L8 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          </label>`;
+          </div>`;
         }).join("")}
       </div>
     </div>`).join("");
 }
 
-function toggleSlot(input){
-  const tile=input.closest(".date-tile"),id=tile.dataset.id;
-  if(input.checked){curSel.add(id);tile.classList.add("checked")}
-  else{curSel.delete(id);tile.classList.remove("checked")}
+function setStatus(id,st){
+  const e=curResp[id]||(curResp[id]={status:"",note:""});
+  e.status=(e.status===st)?"":st; // click the active choice again to clear it
+  const tile=document.querySelector(`.date-tile[data-id="${id}"]`);
+  tile.classList.remove("status-yes","status-maybe","status-no");
+  if(e.status)tile.classList.add("status-"+e.status);
+  tile.querySelectorAll(".vote-btn").forEach(b=>b.classList.remove("on"));
+  if(e.status)tile.querySelector(".vote-"+e.status).classList.add("on");
   updateCount();
 }
+function setNote(id,val){const e=curResp[id]||(curResp[id]={status:"",note:""});e.note=val;}
 
-function updateCount(){const n=curSel.size;document.getElementById("sel-count").textContent=n;document.getElementById("sel-plural").textContent=n===1?"":"s"}
+function updateCount(){const n=Object.values(curResp).filter(e=>e&&e.status).length;document.getElementById("sel-count").textContent=n;document.getElementById("sel-plural").textContent=n===1?"":"s"}
 
 async function submitAvailability(){
-  const r=await getResponses();r[curPlayer]=[...curSel];await putResponses(r);
+  const clean={};
+  for(const id in curResp){const e=curResp[id];if(e&&(e.status||(e.note&&e.note.trim())))clean[id]={status:e.status||"",note:(e.note||"").trim()};}
+  const r=await getResponses();r[curPlayer]=clean;await putResponses(r);
   _cache["responses"]=r;
   document.getElementById("result-name").textContent=curPlayer;
   await renderResults();showStep("step-results");toast("Availability saved!");
@@ -746,14 +799,17 @@ async function renderResults(){
   if(!sessions.length||!total){wrap.innerHTML='<p style="text-align:center;color:var(--ink-faint);font-style:italic">No responses recorded yet.</p>';return;}
 
   const rows=sessions.map(s=>{
-    const avail=players.filter(p=>(responses[p]||[]).includes(s.id));
-    return{...s,avail,count:avail.length};
+    const yes=[],maybe=[],no=[];
+    players.forEach(p=>{const e=responses[p][s.id];if(!e||!e.status)return;
+      (e.status==="yes"?yes:e.status==="maybe"?maybe:no).push({p,note:e.note});});
+    return{...s,yes,maybe,no,count:yes.length};
   });
   const best=Math.max(...rows.map(r=>r.count),0);
+  const pill=(cls,arr)=>arr.map(x=>`<span class="name-pill ${cls}"${x.note?` title="${escAttr(x.note)}"`:""}>${x.p}${x.note?" 🗨":""}</span>`).join("");
 
   wrap.innerHTML=`<table class="results-table">
     <thead><tr><th>Date &amp; Time</th><th>Available</th><th>Who</th></tr></thead>
-    <tbody>${rows.map(({date,time,duration,avail,count})=>{
+    <tbody>${rows.map(({date,time,duration,yes,maybe,no,count})=>{
       const d=localDate(date),isBest=count===best&&count>0,pct=total?Math.round(count/total*100):0;
       const dl=duration?durLabel(duration):"";
       return`<tr${isBest?' class="best-row"':""}>
@@ -764,7 +820,7 @@ async function renderResults(){
           ${isBest?'<span class="best-badge">Best</span>':""}
         </td>
         <td style="min-width:110px"><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div><div class="bar-label">${count}/${total}</div></div></td>
-        <td>${avail.length?avail.map(p=>`<span class="name-pill">${p}</span>`).join(""):'<span style="color:var(--ink-faint)">—</span>'}</td>
+        <td>${(yes.length||maybe.length||no.length)?pill("",yes)+pill("maybe",maybe)+pill("no",no):'<span style="color:var(--ink-faint)">—</span>'}</td>
       </tr>`;
     }).join("")}</tbody>
   </table>
@@ -819,6 +875,17 @@ async function clearResponses(){
   await putResponses({});_cache["responses"]={};await renderAdminResponses();await renderSessionList();toast("All responses cleared.");
 }
 
+async function resetCalendar(){
+  if(!confirm("Reset the calendar? This removes ALL suggested dates and cannot be undone."))return;
+  // Strip all slot references from responses (keeping player entries) and clear confirmed slots.
+  const responses=await getResponses();
+  Object.keys(responses).forEach(p=>{responses[p]={}});
+  await putSessions([]);await putResponses(responses);await putConfirmed(new Set());
+  _cache["responses"]=responses;
+  await buildCal();await renderSessionList();await renderAdminResponses();
+  toast("Calendar reset.");
+}
+
 // ── Calendar ──────────────────────────────────────────────────────────────────
 let calY=new Date().getFullYear(),calM=new Date().getMonth();
 
@@ -866,7 +933,7 @@ function calClick(key){
   pendingDate=key;
   document.getElementById("popup-date").textContent=dispLong(key);
   const h=document.getElementById("t-hour");h.innerHTML="";
-  for(let i=1;i<=12;i++){const o=document.createElement("option");o.value=i;o.textContent=i;if(i===7)o.selected=true;h.appendChild(o)}
+  for(let i=1;i<=12;i++){const o=document.createElement("option");o.value=i;o.textContent=i;if(i===6)o.selected=true;h.appendChild(o)}
   const m=document.getElementById("t-min");m.innerHTML="";
   ["00","15","30","45"].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;m.appendChild(o)});
   // Reset duration to default 180
@@ -900,10 +967,13 @@ async function renderSessionList(){
   const total=players.length;
   const confirmed=await getConfirmed();
 
-  // Count respondents per slot id
-  const countById={};
+  // Tally votes per slot id (yes/maybe/no + notes); count = number of "yes".
+  const votesById={},countById={};
   sessions.forEach(s=>{
-    countById[s.id]=players.filter(p=>(responses[p]||[]).includes(s.id)).length;
+    const yes=[],maybe=[],no=[];
+    players.forEach(p=>{const e=responses[p][s.id];if(!e||!e.status)return;
+      (e.status==="yes"?yes:e.status==="maybe"?maybe:no).push({p,note:e.note});});
+    votesById[s.id]={yes,maybe,no};countById[s.id]=yes.length;
   });
 
   // Group by date
@@ -931,7 +1001,9 @@ async function renderSessionList(){
       ${slots.map(s=>{
         const n=countById[s.id]||0;
         const pct=total?Math.round(n/total*100):0;
-        const names=players.filter(p=>(responses[p]||[]).includes(s.id));
+        const v=votesById[s.id]||{yes:[],maybe:[],no:[]};
+        const vp=(cls,arr)=>arr.map(x=>`<span class="slot-name-pill ${cls}"${x.note?` title="${escAttr(x.note)}"`:""}>${x.p}${x.note?" 🗨":""}</span>`).join("");
+        const notes=[...v.yes,...v.maybe,...v.no].filter(x=>x.note);
         const isConf=confirmed.has(s.id);
         return`<div class="session-slot${isConf?" confirmed":""}">
           <div style="flex:1;min-width:0">
@@ -939,7 +1011,9 @@ async function renderSessionList(){
             ${total>0?`<div class="slot-response-row">
               <div class="slot-bar-bg"><div class="slot-bar-fill" style="width:${pct}%"></div></div>
               <div class="slot-bar-label">${n}/${total}</div>
-              ${names.length?`<div class="slot-names">${names.map(p=>`<span class="slot-name-pill">${p}</span>`).join("")}</div>`:""}
+              <div class="slot-tally">✓${v.yes.length} · ?${v.maybe.length} · ✗${v.no.length}</div>
+              ${(v.yes.length||v.maybe.length||v.no.length)?`<div class="slot-names">${vp("",v.yes)}${vp("maybe",v.maybe)}${vp("no",v.no)}</div>`:""}
+              ${notes.length?`<div class="slot-notes">${notes.map(x=>`<div class="slot-note">🗨 <strong>${x.p}:</strong> ${escAttr(x.note)}</div>`).join("")}</div>`:""}
             </div>`:""}
             <label class="confirm-check${isConf?" on":""}">
               <input type="checkbox" ${isConf?"checked":""} onchange="toggleConfirm('${s.id}',this)">
@@ -962,7 +1036,7 @@ async function renderSessionList(){
 async function removeSlot(id){
   const sessions=(await getSessions()).filter(s=>s.id!==id);
   const responses=await getResponses();
-  Object.keys(responses).forEach(p=>{responses[p]=(responses[p]||[]).filter(sid=>sid!==id)});
+  Object.keys(responses).forEach(p=>{delete responses[p][id]});
   const confirmed=await getConfirmed();confirmed.delete(id);
   await putConfirmed(confirmed);
   await putSessions(sessions);await putResponses(responses);
@@ -980,10 +1054,11 @@ async function renderAdminResponses(){
   c.innerHTML=`<table class="resp-table">
     <thead><tr><th>Player</th><th>Available slots</th><th></th></tr></thead>
     <tbody>${players.map(p=>{
-      const ids=responses[p]||[];
-      const pills=ids.filter(id=>slotById[id]).map(id=>{
-        const s=slotById[id];
-        return`<span class="avail-pill">${dispShort(s.date)} ${s.time}</span>`;
+      const resp=responses[p]||{};
+      const pills=Object.keys(resp).filter(id=>slotById[id]&&resp[id].status).map(id=>{
+        const s=slotById[id],e=resp[id],cls=e.status==="yes"?"":e.status;
+        const mark=e.status==="yes"?"✓":e.status==="maybe"?"?":"✗";
+        return`<span class="avail-pill ${cls}"${e.note?` title="${escAttr(e.note)}"`:""}>${mark} ${dispShort(s.date)} ${s.time}${e.note?" 🗨":""}</span>`;
       }).join("");
       return`<tr>
         <td style="color:var(--admin-gold);font-family:'Cinzel',serif;white-space:nowrap">${p}</td>
